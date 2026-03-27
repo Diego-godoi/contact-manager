@@ -22,7 +22,7 @@ class User(Base):
     password: Mapped[str] = mapped_column(String(255), nullable=False)
     contacts: Mapped[List['Contact']] = relationship(
         back_populates='user',
-        lazy='selectin',  # lazy_load para async
+        lazy='noload',
         cascade='all, delete-orphan',
     )
 
