@@ -2,7 +2,6 @@ from pytest import mark, raises
 
 from app.errors.exceptions import (
     ConflictError,
-    InvalidCredentialsError,
     NotFoundError,
 )
 from app.models.user import User
@@ -222,88 +221,3 @@ class TestUserServiceGetAllUsers:
         assert result_pages == 0
 
         mock_user_repository.get_all.assert_called_once_with(page, per_page)
-
-
-@mark.asyncio
-class TestUserServiceLoginUser:
-    async def test_login_user_successfully(self, mocker, create_login, create_users):
-        data = create_login(email='test@example.com', password='pass1234')
-
-        mock_user = create_users(count=1, email='test@example.com', password='pass1234')
-        mock_user[0].check_password = mocker.AsyncMock(return_value=True)
-
-        mock_user_repository = mocker.AsyncMock()
-        mock_user_repository.find_by_email.return_value = mock_user[0]
-
-        result_access_token, result_refresh_token = await UserService(
-            mock_user_repository
-        ).login_user(data)
-
-        assert result_access_token is not None
-        assert result_refresh_token is not None
-
-        mock_user_repository.find_by_email.assert_called_once_with(data.email)
-
-    async def test_login_user_fails_with_invalid_password(
-        self, mocker, create_login, create_users
-    ):
-        data = create_login(email='test@example.com', password='pass1234')
-
-        mock_user = create_users(count=1, email='test@example.com', password='')
-        mock_user[0].check_password = mocker.AsyncMock(
-            return_value=False
-        )  # senha errada
-
-        mock_user_repository = mocker.AsyncMock()
-        mock_user_repository.find_by_email.return_value = mock_user[0]
-
-        with raises(InvalidCredentialsError) as exc_info:
-            await UserService(mock_user_repository).login_user(data)
-
-        assert exc_info.value.detail == 'Invalid password'
-
-        mock_user_repository.find_by_email.assert_called_once_with(data.email)
-
-    async def test_login_user_fails_when_user_not_found(self, mocker, create_login):
-        data = create_login()
-
-        mock_user_repository = mocker.AsyncMock()
-        mock_user_repository.find_by_email.return_value = None
-
-        with raises(NotFoundError) as exc_info:
-            await UserService(mock_user_repository).login_user(data)
-
-        assert exc_info.value.detail == 'User not found'
-
-        mock_user_repository.find_by_email.assert_called_once_with(data.email)
-
-
-@mark.asyncio
-class TestUserServiceGetUser:
-    async def test_get_user_successfully(self, mocker, create_users):
-        id = 1
-        mock_user = create_users(count=1)[0]
-        mock_user.id = id
-
-        mock_user_repository = mocker.AsyncMock()
-        mock_user_repository.find_by_id.return_value = mock_user
-
-        result = await UserService(mock_user_repository).get_user(id)
-
-        assert result is not None
-        assert result.id == id
-        assert result.email == mock_user.email
-
-        mock_user_repository.find_by_id.assert_called_once_with(id)
-
-    async def test_get_user_fails_when_user_not_found(self, mocker):
-        id = 999
-        mock_user_repository = mocker.AsyncMock()
-        mock_user_repository.find_by_id.return_value = None
-
-        with raises(NotFoundError) as exc_info:
-            await UserService(mock_user_repository).get_user(id)
-
-        assert exc_info.value.detail == 'User not found'
-
-        mock_user_repository.find_by_id.assert_called_once_with(id)

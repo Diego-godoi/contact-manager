@@ -1,7 +1,52 @@
 from pytest import mark
 from app.controllers.users import get_service
 from app.config.jwt import create_access_token, owner_required
-from app.errors.exceptions import NotFoundError
+from app.errors.exceptions import NotFoundError, ConflictError
+
+
+@mark.asyncio
+class TestUsersRegister:
+    async def test_create_successfully(
+        self, client, mocker, create_users, create_user_request
+    ):
+        users = create_users(count=1, email='test@example.com')
+        users[0].id = 1
+
+        mock_service = mocker.AsyncMock()
+        mock_service.create_user.return_value = users[0]
+
+        client.app.dependency_overrides[get_service] = lambda: mock_service
+
+        user_payload = create_user_request(email='test@example.com').model_dump()
+
+        response = await client.post('/users/register', json=user_payload)
+
+        assert response.status_code == 201
+        assert response.json()['email'] == 'test@example.com'
+        assert 'id' in response.json()
+
+    async def test_create_with_duplicate_email(
+        self, client, mocker, create_user_request
+    ):
+        mock_service = mocker.AsyncMock()
+        mock_service.create_user.side_effect = ConflictError()
+        client.app.dependency_overrides[get_service] = lambda: mock_service
+
+        user_payload = create_user_request().model_dump()
+
+        response = await client.post('/users/register', json=user_payload)
+
+        assert response.status_code == 409
+        assert 'Resource already exists' in response.json()['error']
+
+    async def test_create_with_invalid_data(self, client, mocker):
+        mock_service = mocker.AsyncMock()
+        client.app.dependency_overrides[get_service] = lambda: mock_service
+
+        invalid_payload = {'name': 'Test', 'email': 'invalid-email'}
+        response = await client.post('/users/register', json=invalid_payload)
+
+        assert response.status_code == 422
 
 
 @mark.asyncio

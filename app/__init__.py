@@ -13,6 +13,7 @@ from app.controllers.auth import auth_router
 from app.errors.handlers import register_error_handlers
 from contextlib import asynccontextmanager
 from app.schemas.schemas import ValidationErrorResponse
+from app.config.settings import settings
 
 
 class SecurityHeadersMiddleware(BaseHTTPMiddleware):
@@ -48,7 +49,7 @@ async def lifespan(app: FastAPI):
 
 def create_app():
     app = FastAPI(
-        title='Contacts Manager',
+        title=settings.APP_NAME,
         version='v1',
         docs_url='/swagger',
         lifespan=lifespan,

@@ -1,7 +1,5 @@
-from app.config.jwt import create_tokens
 from app.errors.exceptions import (
     ConflictError,
-    InvalidCredentialsError,
     NotFoundError,
 )
 from app.models.user import User
@@ -50,19 +48,3 @@ class UserService:
         items, total = await self.repository.get_all(page, per_page)
         pages = (total + per_page - 1) // per_page
         return items, total, pages
-
-    async def login_user(self, data):
-        user: User = await self.repository.find_by_email(data.email)
-        if user is None:
-            raise NotFoundError(detail='User not found')
-
-        if not await user.check_password(data.password):
-            raise InvalidCredentialsError(detail='Invalid password')
-
-        return create_tokens(user.id)
-
-    async def get_user(self, id: int):
-        user = await self.repository.find_by_id(id)
-        if not user:
-            raise NotFoundError(detail='User not found')
-        return user

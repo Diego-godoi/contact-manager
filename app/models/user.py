@@ -9,6 +9,7 @@ from app.config.db import Base
 
 if TYPE_CHECKING:
     from app.models.contact import Contact
+    from app.models.password_reset_token import PasswordResetToken
 
 
 class User(Base):
@@ -24,6 +25,9 @@ class User(Base):
         back_populates='user',
         lazy='noload',
         cascade='all, delete-orphan',
+    )
+    password_reset_tokens: Mapped[List['PasswordResetToken']] = relationship(
+        back_populates='user', lazy='noload', cascade='all, delete-orphan'
     )
 
     def __init__(self, name: str, email: str, password: str):

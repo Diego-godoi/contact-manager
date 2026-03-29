@@ -1,52 +1,7 @@
 from pytest import mark
 from app.controllers.auth import get_service
 from app.config.jwt import create_access_token, create_tokens
-from app.errors.exceptions import ConflictError, InvalidCredentialsError
-
-
-@mark.asyncio
-class TestAuthCreate:
-    async def test_create_successfully(
-        self, client, mocker, create_users, create_user_request
-    ):
-        users = create_users(count=1, email='test@example.com')
-        users[0].id = 1
-
-        mock_service = mocker.AsyncMock()
-        mock_service.create_user.return_value = users[0]
-
-        client.app.dependency_overrides[get_service] = lambda: mock_service
-
-        user_payload = create_user_request(email='test@example.com').model_dump()
-
-        response = await client.post('/auth/register', json=user_payload)
-
-        assert response.status_code == 201
-        assert response.json()['email'] == 'test@example.com'
-        assert 'id' in response.json()
-
-    async def test_create_with_duplicate_email(
-        self, client, mocker, create_user_request
-    ):
-        mock_service = mocker.AsyncMock()
-        mock_service.create_user.side_effect = ConflictError()
-        client.app.dependency_overrides[get_service] = lambda: mock_service
-
-        user_payload = create_user_request().model_dump()
-
-        response = await client.post('/auth/register', json=user_payload)
-
-        assert response.status_code == 409
-        assert 'Resource already exists' in response.json()['error']
-
-    async def test_create_with_invalid_data(self, client, mocker):
-        mock_service = mocker.AsyncMock()
-        client.app.dependency_overrides[get_service] = lambda: mock_service
-
-        invalid_payload = {'name': 'Test', 'email': 'invalid-email'}
-        response = await client.post('/auth/register', json=invalid_payload)
-
-        assert response.status_code == 422
+from app.errors.exceptions import InvalidCredentialsError, NotFoundError
 
 
 @mark.asyncio
@@ -191,3 +146,115 @@ class TestAuthMe:
         )
 
         assert response.status_code == 404
+
+
+@mark.asyncio
+class TestAuthForgotPassword:
+    async def test_forgot_password_successfully(self, client, mocker):
+        mock_service = mocker.AsyncMock()
+
+        mock_service.email_forgot_password_link.return_value = None
+
+        client.app.dependency_overrides[get_service] = lambda: mock_service
+
+        payload = {'email': 'test@example.com'}
+        response = await client.post('/auth/forgot-password', json=payload)
+
+        assert response.status_code == 200
+        assert (
+            response.json()['detail']
+            == 'A email with password reset link has been sent to you.'
+        )
+
+        mock_service.email_forgot_password_link.assert_called_once()
+
+    async def test_forgot_password_invalid_email_format(self, client, mocker):
+        mock_service = mocker.AsyncMock()
+        client.app.dependency_overrides[get_service] = lambda: mock_service
+
+        payload = {'email': 'email-invalido'}
+        response = await client.post('/auth/forgot-password', json=payload)
+
+        assert response.status_code == 422
+
+    async def test_forgot_password_missing_payload(self, client, mocker):
+        mock_service = mocker.AsyncMock()
+        client.app.dependency_overrides[get_service] = lambda: mock_service
+
+        response = await client.post('/auth/forgot-password', json={})
+
+        assert response.status_code == 422
+
+    async def test_forgot_password_service_raises_error(self, client, mocker):
+        from app.errors.exceptions import NotFoundError
+
+        mock_service = mocker.AsyncMock()
+        mock_service.email_forgot_password_link.side_effect = NotFoundError()
+        client.app.dependency_overrides[get_service] = lambda: mock_service
+
+        payload = {'email': 'nao-existe@example.com'}
+        response = await client.post('/auth/forgot-password', json=payload)
+
+        assert response.status_code == 404
+
+
+@mark.asyncio
+class TestAuthResetPassword:
+    async def test_reset_password_successfully(
+        self, client, mocker, create_reset_password_request
+    ):
+        mock_service = mocker.AsyncMock()
+        mock_service.reset_password.return_value = None
+        client.app.dependency_overrides[get_service] = lambda: mock_service
+
+        payload = create_reset_password_request(count=1)[0].model_dump()
+
+        response = await client.post('/auth/reset-password', json=payload)
+
+        assert response.status_code == 200
+        assert response.json()['detail'] == 'Password updated successfully'
+        mock_service.reset_password.assert_called_once()
+
+    async def test_reset_password_token_not_found(
+        self, client, mocker, create_reset_password_request
+    ):
+
+        mock_service = mocker.AsyncMock()
+        mock_service.reset_password.side_effect = NotFoundError(
+            detail='Token not found'
+        )
+        client.app.dependency_overrides[get_service] = lambda: mock_service
+
+        payload = create_reset_password_request(count=1)[0].model_dump()
+
+        response = await client.post('/auth/reset-password', json=payload)
+
+        assert response.status_code == 404
+        assert response.json()['error'] == 'Token not found'
+
+    async def test_reset_password_token_expired(
+        self, client, mocker, create_reset_password_request
+    ):
+
+        mock_service = mocker.AsyncMock()
+        mock_service.reset_password.side_effect = InvalidCredentialsError(
+            detail='Token has expired'
+        )
+        client.app.dependency_overrides[get_service] = lambda: mock_service
+
+        payload = create_reset_password_request(count=1)[0].model_dump()
+
+        response = await client.post('/auth/reset-password', json=payload)
+
+        assert response.status_code == 401
+        assert response.json()['error'] == 'Token has expired'
+
+    async def test_reset_password_validation_error(self, client, mocker):
+        mock_service = mocker.AsyncMock()
+        client.app.dependency_overrides[get_service] = lambda: mock_service
+
+        payload = {'token': 'some-token'}  # Faltando a nova senha
+
+        response = await client.post('/auth/reset-password', json=payload)
+
+        assert response.status_code == 422  # Unprocessable Entity do Pydantic

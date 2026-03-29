@@ -50,6 +50,15 @@ class TokenResponse(BaseModel):
     refresh: str
 
 
+class EmailSchema(BaseModel):
+    email: CleanEmail
+
+
+class ResetPasswordRequest(BaseModel):
+    token: RequiredStr
+    new_password: PasswordStr
+
+
 class ValidationErrorResponse(BaseModel):
     error: List[Dict[str, str]]
 

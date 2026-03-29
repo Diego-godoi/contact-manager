@@ -11,12 +11,16 @@ from app import create_app
 from app.config.db import Base
 from app.repositories.user_repository import UserRepository
 from app.repositories.contact_repository import ContactRepository
+from app.repositories.token_repository import TokenRepository
 from tests.factories import (
     LoginFactory,
     UserFactory,
     UserRequestFactory,
     ContactFactory,
     ContactRequestFactory,
+    PasswordResetTokenFactory,
+    EmailSchemaFactory,
+    ResetPasswordRequestFactory,
 )
 
 TEST_DATABASE_URL = 'sqlite+aiosqlite:///:memory:'
@@ -58,6 +62,11 @@ async def contact_repository(async_session):
     return ContactRepository(async_session)
 
 
+@pytest_asyncio.fixture
+async def token_repository(async_session):
+    return TokenRepository(async_session)
+
+
 @pytest.fixture
 def create_contacts():
     def _create_contacts(count=5, **kwargs):
@@ -91,11 +100,35 @@ def create_login():
 
 
 @pytest.fixture
+def create_email_schema():
+    def _create_email_schema(**kwargs):
+        return EmailSchemaFactory.build(**kwargs)
+
+    return _create_email_schema
+
+
+@pytest.fixture
 def create_users():
     def _create_users(count=5, **kwargs):
         return UserFactory.build_batch(count, **kwargs)
 
     return _create_users
+
+
+@pytest.fixture
+def create_tokens():
+    def _create_tokens(count=5, **kwargs):
+        return PasswordResetTokenFactory.build_batch(count, **kwargs)
+
+    return _create_tokens
+
+
+@pytest.fixture
+def create_reset_password_request():
+    def _create_reset_password_request(count=5, **kwargs):
+        return ResetPasswordRequestFactory.build_batch(count, **kwargs)
+
+    return _create_reset_password_request
 
 
 @pytest_asyncio.fixture

@@ -21,6 +21,12 @@ async def get_service(db: AsyncSession = Depends(get_db)) -> UserService:
     return UserService(repository)
 
 
+@user_router.post('/register', response_model=UserResponse, status_code=201)
+async def create(user_data: UserRequest, service: UserService = Depends(get_service)):
+    response = await service.create_user(user_data)
+    return UserResponse.model_validate(response)
+
+
 @user_router.get('/', status_code=200, response_model=dict)
 async def get_all(
     page: int = Query(1, gt=0),

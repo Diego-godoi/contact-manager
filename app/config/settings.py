@@ -1,11 +1,39 @@
-import os
+from pydantic_settings import BaseSettings, SettingsConfigDict
 
-from dotenv import load_dotenv
 
-load_dotenv()
+class Settings(BaseSettings):
+    # APP
+    APP_NAME: str = 'Contact Manager'
 
-SECRET_KEY = os.getenv('SECRET_KEY', 'chave-super-secreta')
-ALGORITHM = os.getenv('ALGORITHM', 'HS256')
-ACCESS_TOKEN_EXPIRE_MINUTES = int(os.getenv('ACCESS_TOKEN_EXPIRE_MINUTES', '15'))
-REFRESH_TOKEN_EXPIRE_DAYS = int(os.getenv('REFRESH_TOKEN_EXPIRE_DAYS', '30'))
-DATABASE_URL = os.getenv('DATABASE_URL', 'sqlite+aiosqlite:///contact_manager.sqlite')
+    # JWT
+    SECRET_KEY: str
+    ALGORITHM: str = 'HS256'
+    ACCESS_TOKEN_EXPIRE_MINUTES: int = 15
+    REFRESH_TOKEN_EXPIRE_DAYS: int = 7
+
+    # Database
+    DATABASE_URL: str = 'sqlite+aiosqlite:///contact_manager.sqlite'
+
+    # Email
+    MAIL_USERNAME: str
+    MAIL_PASSWORD: str
+    MAIL_SERVER: str = 'smtp.gmail.com'
+    MAIL_STARTTLS: bool = True
+    MAIL_SSL_TLS: bool = False
+    MAIL_DEBUG: bool = True
+    MAIL_FROM: str
+    MAIL_FROM_NAME: str = 'Contact Manager Support'
+    SUPPRESS_SEND: bool = False
+    USE_CREDENTIALS: bool = True
+    VALIDATE_CERTS: bool = True
+    MAIL_PORT: int = 587
+
+    # Frontend
+    FRONTEND_HOST: str = 'http://localhost:3000'
+
+    model_config = SettingsConfigDict(
+        env_file='.env', env_file_encoding='utf-8', case_sensitive=True
+    )
+
+
+settings = Settings()

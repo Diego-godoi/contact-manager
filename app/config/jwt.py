@@ -4,12 +4,7 @@ from fastapi import Depends, HTTPException
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from jose import JWTError, jwt
 
-from app.config.settings import (
-    ACCESS_TOKEN_EXPIRE_MINUTES,
-    ALGORITHM,
-    REFRESH_TOKEN_EXPIRE_DAYS,
-    SECRET_KEY,
-)
+from app.config.settings import settings
 from app.errors.exceptions import ForbiddenError
 
 bearer_scheme = HTTPBearer(auto_error=False)
@@ -21,15 +16,16 @@ def create_tokens(user_id: int):
         'sub': id,
         'type': 'access',
         'exp': datetime.now(timezone.utc)
-        + timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES),
+        + timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES),
     }
-    access_token = jwt.encode(access_info, SECRET_KEY, ALGORITHM)
+    access_token = jwt.encode(access_info, settings.SECRET_KEY, settings.ALGORITHM)
     refresh_info = {
         'sub': id,
         'type': 'refresh',
-        'exp': datetime.now(timezone.utc) + timedelta(days=REFRESH_TOKEN_EXPIRE_DAYS),
+        'exp': datetime.now(timezone.utc)
+        + timedelta(days=settings.REFRESH_TOKEN_EXPIRE_DAYS),
     }
-    refresh_token = jwt.encode(refresh_info, SECRET_KEY, ALGORITHM)
+    refresh_token = jwt.encode(refresh_info, settings.SECRET_KEY, settings.ALGORITHM)
     return access_token, refresh_token
 
 
@@ -38,9 +34,9 @@ def create_access_token(user_id: int):
         'sub': str(user_id),
         'type': 'access',
         'exp': datetime.now(timezone.utc)
-        + timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES),
+        + timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES),
     }
-    return jwt.encode(info, SECRET_KEY, ALGORITHM)
+    return jwt.encode(info, settings.SECRET_KEY, settings.ALGORITHM)
 
 
 def verify_access_token(
@@ -50,7 +46,9 @@ def verify_access_token(
         raise HTTPException(status_code=401, detail='Missing token')
     try:
         payload = jwt.decode(
-            credentials.credentials, SECRET_KEY, algorithms=[ALGORITHM]
+            credentials.credentials,
+            settings.SECRET_KEY,
+            algorithms=[settings.ALGORITHM],
         )
         if payload.get('type') != 'access':
             raise HTTPException(status_code=401, detail='Invalid token type')
@@ -66,7 +64,9 @@ def verify_refresh_token(
         raise HTTPException(status_code=401, detail='Missing token')
     try:
         payload = jwt.decode(
-            credentials.credentials, SECRET_KEY, algorithms=[ALGORITHM]
+            credentials.credentials,
+            settings.SECRET_KEY,
+            algorithms=[settings.ALGORITHM],
         )
         if payload.get('type') != 'refresh':
             raise HTTPException(status_code=401, detail='Invalid token type')
