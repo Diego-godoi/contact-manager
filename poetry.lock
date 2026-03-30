@@ -70,9 +70,28 @@ files = [
 
 [package.dependencies]
 idna = ">=2.8"
+typing_extensions = {version = ">=4.5", markers = "python_version < \"3.13\""}
 
 [package.extras]
 trio = ["trio (>=0.32.0)"]
+
+[[package]]
+name = "async-factory-boy"
+version = "1.0.1"
+description = "factory_boy extension with asynchronous ORM support"
+optional = false
+python-versions = ">=3.7"
+groups = ["dev"]
+files = [
+    {file = "async_factory_boy-1.0.1-py2.py3-none-any.whl", hash = "sha256:a0a652776ee164b60a45be06aca44a18781710447de1c534dda82d6cfe23f026"},
+    {file = "async_factory_boy-1.0.1.tar.gz", hash = "sha256:af3a42d9c26b86cc427faf5159ac2e8541b5564bf30424282eb866620af4e143"},
+]
+
+[package.dependencies]
+factory-boy = ">=3.0.0"
+
+[package.extras]
+dev = ["SQLAlchemy", "coverage", "flake8", "isort", "tortoise-orm (>=0.18.1)", "tox", "wheel (>=0.32.0)", "zest.releaser[recommended]"]
 
 [[package]]
 name = "bcrypt"
@@ -673,7 +692,11 @@ files = [
 [package.dependencies]
 fastar = ">=0.8.0"
 httpx = ">=0.27.0"
-pydantic = {version = ">=2.12.0", extras = ["email"], markers = "python_version >= \"3.14\""}
+pydantic = [
+    {version = ">=2.7.4", extras = ["email"], markers = "python_version < \"3.13\""},
+    {version = ">=2.8.0", extras = ["email"], markers = "python_version == \"3.13\""},
+    {version = ">=2.12.0", extras = ["email"], markers = "python_version >= \"3.14\""},
+]
 rich-toolkit = ">=0.19.7"
 rignore = ">=0.5.1"
 sentry-sdk = ">=2.20.0"
@@ -1603,6 +1626,7 @@ files = [
 
 [package.dependencies]
 pytest = ">=8.2,<10"
+typing-extensions = {version = ">=4.12", markers = "python_version < \"3.13\""}
 
 [package.extras]
 docs = ["sphinx (>=5.3)", "sphinx-rtd-theme (>=1)"]
@@ -2367,6 +2391,7 @@ files = [
 
 [package.dependencies]
 anyio = ">=3.6.2,<5"
+typing-extensions = {version = ">=4.10.0", markers = "python_version < \"3.13\""}
 
 [package.extras]
 full = ["httpx (>=0.27.0,<0.29.0)", "itsdangerous", "jinja2", "python-multipart (>=0.0.18)", "pyyaml"]
@@ -2470,11 +2495,12 @@ version = "4.15.0"
 description = "Backported and Experimental Type Hints for Python 3.9+"
 optional = false
 python-versions = ">=3.9"
-groups = ["main"]
+groups = ["main", "dev"]
 files = [
     {file = "typing_extensions-4.15.0-py3-none-any.whl", hash = "sha256:f0fa19c6845758ab08074a0cfa8b7aecb71c999ca73d62883bc25cc018c4e548"},
     {file = "typing_extensions-4.15.0.tar.gz", hash = "sha256:0cea48d173cc12fa28ecabc3b837ea3cf6f38c6d1136f85cbaaf598984861466"},
 ]
+markers = {dev = "python_version == \"3.12\""}
 
 [[package]]
 name = "typing-inspection"
@@ -2911,5 +2937,5 @@ dev = ["pytest", "setuptools"]
 
 [metadata]
 lock-version = "2.1"
-python-versions = ">=3.14,<4.0"
-content-hash = "effe2a8d3fc72dccdafbab5c2d93953148de5c4002ca6627c53fdab5380fea38"
+python-versions = "^3.12"
+content-hash = "8e2b7df49b3b8c20968acdca71472c4a0dd2a9d0acf654821da6dafef5c097db"

@@ -2,22 +2,21 @@ from pytest import mark
 from app.controllers.users import get_service
 from app.config.jwt import create_access_token, owner_required
 from app.errors.exceptions import NotFoundError, ConflictError
+from tests.factories import UserRequestFactory, UserFactory
 
 
 @mark.asyncio
 class TestUsersRegister:
-    async def test_create_successfully(
-        self, client, mocker, create_users, create_user_request
-    ):
-        users = create_users(count=1, email='test@example.com')
-        users[0].id = 1
+    async def test_create_successfully(self, client, mocker):
+        user = UserFactory.build(email='test@example.com')
+        user.id = 1
 
         mock_service = mocker.AsyncMock()
-        mock_service.create_user.return_value = users[0]
+        mock_service.create_user.return_value = user
 
         client.app.dependency_overrides[get_service] = lambda: mock_service
 
-        user_payload = create_user_request(email='test@example.com').model_dump()
+        user_payload = UserRequestFactory.build(email='test@example.com').model_dump()
 
         response = await client.post('/users/register', json=user_payload)
 
@@ -25,14 +24,12 @@ class TestUsersRegister:
         assert response.json()['email'] == 'test@example.com'
         assert 'id' in response.json()
 
-    async def test_create_with_duplicate_email(
-        self, client, mocker, create_user_request
-    ):
+    async def test_create_with_duplicate_email(self, client, mocker):
         mock_service = mocker.AsyncMock()
         mock_service.create_user.side_effect = ConflictError()
         client.app.dependency_overrides[get_service] = lambda: mock_service
 
-        user_payload = create_user_request().model_dump()
+        user_payload = UserRequestFactory.build().model_dump()
 
         response = await client.post('/users/register', json=user_payload)
 
@@ -51,8 +48,8 @@ class TestUsersRegister:
 
 @mark.asyncio
 class TestUsersGetAll:
-    async def test_get_all_successfully(self, client, mocker, create_users):
-        users = create_users(count=3)
+    async def test_get_all_successfully(self, client, mocker):
+        users = UserFactory.build_batch(size=3)
 
         for idx, user in enumerate(users, start=1):
             user.id = idx
@@ -79,14 +76,14 @@ class TestUsersGetAll:
         assert data['pagination']['pages'] == 1
         mock_service.get_all_users.assert_called_once_with(1, 10)
 
-    async def test_get_all_with_pagination(self, client, mocker, create_users):
-        users = create_users(count=1)
-        users[0].id = 1
+    async def test_get_all_with_pagination(self, client, mocker):
+        user = UserFactory.build()
+        user.id = 1
 
         mock_service = mocker.AsyncMock()
         mock_total = 25
         mock_pages = 3
-        mock_service.get_all_users.return_value = (users, mock_total, mock_pages)
+        mock_service.get_all_users.return_value = ([user], mock_total, mock_pages)
 
         client.app.dependency_overrides[get_service] = lambda: mock_service
 
@@ -144,24 +141,21 @@ class TestUsersGetAll:
 
 @mark.asyncio
 class TestUsersUpdate:
-    async def test_update_successfully(
-        self, client, mocker, create_users, create_user_request
-    ):
-        mock_updated_user = create_users(
-            count=1, name='Updated Name', email='updated@example.com'
+    async def test_update_successfully(self, client, mocker):
+        user_id = 1
+        mock_updated_user = UserFactory.build(
+            id=user_id, name='Updated Name', email='updated@example.com'
         )
-        mock_updated_user[0].id = 1
 
         mock_service = mocker.AsyncMock()
-        mock_service.update_user.return_value = mock_updated_user[0]
+        mock_service.update_user.return_value = mock_updated_user
 
         client.app.dependency_overrides[get_service] = lambda: mock_service
         client.app.dependency_overrides[owner_required] = lambda: '1'
 
-        # Token válido para o usuário owner (id=1)
         access_token = create_access_token('1')
 
-        update_payload = create_user_request(
+        update_payload = UserRequestFactory.build(
             name='Updated Name', email='updated@example.com'
         ).model_dump()
 
@@ -177,7 +171,7 @@ class TestUsersUpdate:
         assert data['email'] == 'updated@example.com'
         mock_service.update_user.assert_called_once()
 
-    async def test_update_user_not_found(self, client, mocker, create_user_request):
+    async def test_update_user_not_found(self, client, mocker):
         mock_service = mocker.AsyncMock()
         mock_service.update_user.side_effect = NotFoundError()
 
@@ -185,7 +179,7 @@ class TestUsersUpdate:
 
         access_token = create_access_token('999')
 
-        update_payload = create_user_request().model_dump()
+        update_payload = UserRequestFactory.build().model_dump()
 
         response = await client.put(
             '/users/999',
@@ -196,16 +190,14 @@ class TestUsersUpdate:
         assert response.status_code == 404
         assert 'Resource not found' in response.json()['error']
 
-    async def test_update_without_authorization(
-        self, client, mocker, create_user_request
-    ):
+    async def test_update_without_authorization(self, client, mocker):
         mock_service = mocker.AsyncMock()
         client.app.dependency_overrides[get_service] = lambda: mock_service
 
         # Token de outro usuário (tentando atualizar id=1 com token de user=2)
         access_token = create_access_token('2')
 
-        update_payload = create_user_request(
+        update_payload = UserRequestFactory.build(
             name='Updated', email='updated@example.com'
         ).model_dump()
 
@@ -217,15 +209,11 @@ class TestUsersUpdate:
 
         assert response.status_code == 403
 
-    async def test_update_without_authentication(
-        self, client, mocker, create_user_request
-    ):
+    async def test_update_without_authentication(self, client, mocker):
         mock_service = mocker.AsyncMock()
         client.app.dependency_overrides[get_service] = lambda: mock_service
 
-        update_payload = create_user_request(
-            name='Updated', email='updated@example.com'
-        ).model_dump()
+        update_payload = UserRequestFactory.build().model_dump()
 
         response = await client.put('/users/1', json=update_payload)
 
@@ -237,7 +225,6 @@ class TestUsersUpdate:
 
         access_token = create_access_token('1')
 
-        # Email inválido
         invalid_payload = {'name': 'Test', 'email': 'invalid-email'}
         response = await client.put(
             '/users/1',
@@ -256,7 +243,6 @@ class TestUsersDelete:
 
         client.app.dependency_overrides[get_service] = lambda: mock_service
 
-        # Token válido para o usuário owner (id=1)
         access_token = create_access_token('1')
 
         response = await client.delete(
@@ -287,7 +273,6 @@ class TestUsersDelete:
         mock_service = mocker.AsyncMock()
         client.app.dependency_overrides[get_service] = lambda: mock_service
 
-        # Token de outro usuário (tentando deletar id=1 com token de user=2)
         access_token = create_access_token('2')
 
         response = await client.delete(
@@ -300,7 +285,6 @@ class TestUsersDelete:
         mock_service = mocker.AsyncMock()
         client.app.dependency_overrides[get_service] = lambda: mock_service
 
-        # Sem token
         response = await client.delete('/users/1')
 
         assert response.status_code == 401
@@ -309,7 +293,6 @@ class TestUsersDelete:
         mock_service = mocker.AsyncMock()
         client.app.dependency_overrides[get_service] = lambda: mock_service
 
-        # Token inválido
         response = await client.delete(
             '/users/1', headers={'Authorization': 'Bearer invalid-token'}
         )

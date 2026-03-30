@@ -2,7 +2,9 @@ from pydantic import BaseModel, ConfigDict, EmailStr, StringConstraints
 from typing import Annotated, List, Dict
 
 RequiredStr = Annotated[str, StringConstraints(min_length=1, strip_whitespace=True)]
-PasswordStr = Annotated[str, StringConstraints(min_length=8, max_length=100)]
+PasswordStr = Annotated[
+    str, StringConstraints(min_length=8, max_length=100, strip_whitespace=True)
+]
 CleanEmail = Annotated[
     EmailStr, StringConstraints(max_length=100, to_lower=True, strip_whitespace=True)
 ]

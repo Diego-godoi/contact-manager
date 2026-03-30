@@ -2,11 +2,17 @@ from pytest import mark
 from app.controllers.auth import get_service
 from app.config.jwt import create_access_token, create_tokens
 from app.errors.exceptions import InvalidCredentialsError, NotFoundError
+from tests.factories import (
+    LoginFactory,
+    UserFactory,
+    ResetPasswordRequestFactory,
+    EmailSchemaFactory,
+)
 
 
 @mark.asyncio
 class TestAuthLogin:
-    async def test_login_successfully(self, client, mocker, create_login):
+    async def test_login_successfully(self, client, mocker):
         mock_service = mocker.AsyncMock()
         mock_access = 'access-token-123'
         mock_refresh = 'refresh-token-abc'
@@ -15,7 +21,7 @@ class TestAuthLogin:
 
         client.app.dependency_overrides[get_service] = lambda: mock_service
 
-        login_payload = create_login().model_dump()
+        login_payload = LoginFactory.build().model_dump()
 
         response = await client.post('/auth/login', json=login_payload)
 
@@ -27,12 +33,12 @@ class TestAuthLogin:
 
         mock_service.login_user.assert_called_once()
 
-    async def test_login_with_invalid_credentials(self, client, mocker, create_login):
+    async def test_login_with_invalid_credentials(self, client, mocker):
         mock_service = mocker.AsyncMock()
         mock_service.login_user.side_effect = InvalidCredentialsError()
         client.app.dependency_overrides[get_service] = lambda: mock_service
 
-        login_payload = create_login().model_dump()
+        login_payload = LoginFactory.build().model_dump()
         response = await client.post('/auth/login', json=login_payload)
 
         assert response.status_code == 401
@@ -76,7 +82,6 @@ class TestAuthRefresh:
         assert response.status_code == 401
 
     async def test_refresh_with_access_token_instead_of_refresh(self, client):
-        # Tentar usar access token em vez de refresh token
         access_token = create_access_token(123)
 
         response = await client.get(
@@ -88,9 +93,9 @@ class TestAuthRefresh:
 
 @mark.asyncio
 class TestAuthMe:
-    async def test_get_me_successfully(self, client, mocker, create_users):
+    async def test_get_me_successfully(self, client, mocker):
         user_id = 1
-        user = create_users(count=1, email='diego@example.com')[0]
+        user = UserFactory.build(email='diego@example.com')
         user.id = user_id
 
         access_token = create_access_token(user_id)
@@ -129,11 +134,6 @@ class TestAuthMe:
         assert 'Missing token' in response.json()['detail']
 
     async def test_get_me_user_not_found(self, client, mocker):
-        # Caso onde o token é válido mas o usuário foi deletado do banco
-        from app.errors.exceptions import (
-            NotFoundError,
-        )
-
         user_id = 999
         access_token = create_access_token(user_id)
 
@@ -157,7 +157,7 @@ class TestAuthForgotPassword:
 
         client.app.dependency_overrides[get_service] = lambda: mock_service
 
-        payload = {'email': 'test@example.com'}
+        payload = EmailSchemaFactory.build().model_dump()
         response = await client.post('/auth/forgot-password', json=payload)
 
         assert response.status_code == 200
@@ -172,7 +172,7 @@ class TestAuthForgotPassword:
         mock_service = mocker.AsyncMock()
         client.app.dependency_overrides[get_service] = lambda: mock_service
 
-        payload = {'email': 'email-invalido'}
+        payload = {'email': 'invalid-email'}
         response = await client.post('/auth/forgot-password', json=payload)
 
         assert response.status_code == 422
@@ -185,14 +185,12 @@ class TestAuthForgotPassword:
 
         assert response.status_code == 422
 
-    async def test_forgot_password_service_raises_error(self, client, mocker):
-        from app.errors.exceptions import NotFoundError
-
+    async def test_forgot_password_with_unregistered_email(self, client, mocker):
         mock_service = mocker.AsyncMock()
         mock_service.email_forgot_password_link.side_effect = NotFoundError()
         client.app.dependency_overrides[get_service] = lambda: mock_service
 
-        payload = {'email': 'nao-existe@example.com'}
+        payload = EmailSchemaFactory.build().model_dump()
         response = await client.post('/auth/forgot-password', json=payload)
 
         assert response.status_code == 404
@@ -200,14 +198,12 @@ class TestAuthForgotPassword:
 
 @mark.asyncio
 class TestAuthResetPassword:
-    async def test_reset_password_successfully(
-        self, client, mocker, create_reset_password_request
-    ):
+    async def test_reset_password_successfully(self, client, mocker):
         mock_service = mocker.AsyncMock()
         mock_service.reset_password.return_value = None
         client.app.dependency_overrides[get_service] = lambda: mock_service
 
-        payload = create_reset_password_request(count=1)[0].model_dump()
+        payload = ResetPasswordRequestFactory.build().model_dump()
 
         response = await client.post('/auth/reset-password', json=payload)
 
@@ -215,26 +211,20 @@ class TestAuthResetPassword:
         assert response.json()['detail'] == 'Password updated successfully'
         mock_service.reset_password.assert_called_once()
 
-    async def test_reset_password_token_not_found(
-        self, client, mocker, create_reset_password_request
-    ):
+    async def test_reset_password_token_not_found(self, client, mocker):
 
         mock_service = mocker.AsyncMock()
-        mock_service.reset_password.side_effect = NotFoundError(
-            detail='Token not found'
-        )
+        mock_service.reset_password.side_effect = NotFoundError()
         client.app.dependency_overrides[get_service] = lambda: mock_service
 
-        payload = create_reset_password_request(count=1)[0].model_dump()
+        payload = ResetPasswordRequestFactory.build().model_dump()
 
         response = await client.post('/auth/reset-password', json=payload)
 
         assert response.status_code == 404
-        assert response.json()['error'] == 'Token not found'
+        assert response.json()['error'] == 'Resource not found'
 
-    async def test_reset_password_token_expired(
-        self, client, mocker, create_reset_password_request
-    ):
+    async def test_reset_password_token_expired(self, client, mocker):
 
         mock_service = mocker.AsyncMock()
         mock_service.reset_password.side_effect = InvalidCredentialsError(
@@ -242,7 +232,7 @@ class TestAuthResetPassword:
         )
         client.app.dependency_overrides[get_service] = lambda: mock_service
 
-        payload = create_reset_password_request(count=1)[0].model_dump()
+        payload = ResetPasswordRequestFactory.build().model_dump()
 
         response = await client.post('/auth/reset-password', json=payload)
 

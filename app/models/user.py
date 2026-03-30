@@ -3,7 +3,7 @@ from typing import TYPE_CHECKING, List
 
 from bcrypt import checkpw, gensalt, hashpw
 from sqlalchemy import String
-from sqlalchemy.orm import Mapped, mapped_column, relationship
+from sqlalchemy.orm import Mapped, mapped_column, relationship, validates
 
 from app.config.db import Base
 
@@ -30,10 +30,17 @@ class User(Base):
         back_populates='user', lazy='noload', cascade='all, delete-orphan'
     )
 
-    def __init__(self, name: str, email: str, password: str):
-        self.name = name.strip()
-        self.email = email.strip().lower()
-        self.password = password
+    @validates('name')
+    def validate_name(self, key, value):
+        if value:
+            return value.strip()
+        return value
+
+    @validates('email')
+    def validate_email(self, key, value):
+        if value:
+            return value.strip().lower()
+        return value
 
     async def set_password(self, password):
         self.password = await asyncio.to_thread(

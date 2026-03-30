@@ -1,5 +1,6 @@
+from async_factory_boy.factory.sqlalchemy import AsyncSQLAlchemyFactory
 import factory
-from factory import Faker, LazyFunction
+from factory import Faker, LazyFunction, SubFactory
 
 from app.models.user import User
 from app.models.contact import Contact
@@ -8,28 +9,62 @@ from app.schemas.schemas import (
     LoginSchema,
     UserRequest,
     ContactRequest,
-    EmailSchema,
     ResetPasswordRequest,
+    EmailSchema,
 )
 from datetime import datetime, timezone, timedelta
 
 
-class UserFactory(factory.Factory):
+class BaseAsyncFactory(AsyncSQLAlchemyFactory):
+    class Meta:
+        abstract = True
+        sqlalchemy_session = None
+        sqlalchemy_session_persistence = 'flush'
+
+
+class UserFactory(BaseAsyncFactory):
     class Meta:
         model = User
 
     name = Faker('name')
     email = Faker('email')
-    password = Faker('password', length=12)
+    password = 'hashed_password_placeholder'
+
+    @factory.post_generation
+    def with_contact(obj, create, extracted, **kwargs):
+        if not create:
+            return
+        if extracted is True:
+            ContactFactory.create(user=obj, **kwargs)
+
+    @factory.post_generation
+    def with_token(obj, create, extracted, **kwargs):
+        if not create:
+            return
+
+        if extracted is True:
+            PasswordResetTokenFactory.create(user=obj, **kwargs)
 
 
-class ContactFactory(factory.Factory):
+class ContactFactory(BaseAsyncFactory):
     class Meta:
         model = Contact
 
+    user = SubFactory(UserFactory)
     name = Faker('name')
-    phone = Faker('bothify', text='###########')
+    phone = Faker('numerify', text='###########')
     email = Faker('email')
+
+
+class PasswordResetTokenFactory(BaseAsyncFactory):
+    class Meta:
+        model = PasswordResetToken
+
+    user = SubFactory(UserFactory)
+    token_hash = Faker('uuid4')
+    expires_at = LazyFunction(
+        lambda: datetime.now(timezone.utc) + timedelta(minutes=30)
+    )
 
 
 class UserRequestFactory(factory.Factory):
@@ -46,7 +81,7 @@ class ContactRequestFactory(factory.Factory):
         model = ContactRequest
 
     name = Faker('name')
-    phone = Faker('bothify', text='###########')
+    phone = Faker('numerify', text='###########')
     email = Faker('email')
 
 
@@ -58,14 +93,12 @@ class LoginFactory(factory.Factory):
     password = Faker('password', length=12)
 
 
-class PasswordResetTokenFactory(factory.Factory):
+class ResetPasswordRequestFactory(factory.Factory):
     class Meta:
-        model = PasswordResetToken
+        model = ResetPasswordRequest
 
-    token_hash = Faker('uuid4')
-    expires_at = LazyFunction(
-        lambda: datetime.now(timezone.utc) + timedelta(minutes=30)
-    )
+    new_password = 'NewSecurePassword123!'
+    token = Faker('uuid4')
 
 
 class EmailSchemaFactory(factory.Factory):
@@ -73,11 +106,3 @@ class EmailSchemaFactory(factory.Factory):
         model = EmailSchema
 
     email = Faker('email')
-
-
-class ResetPasswordRequestFactory(factory.Factory):
-    class Meta:
-        model = ResetPasswordRequest
-
-    new_password = Faker('password')
-    token = Faker('uuid4')

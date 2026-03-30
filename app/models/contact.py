@@ -1,7 +1,7 @@
 from typing import TYPE_CHECKING, Optional
 
 from sqlalchemy import ForeignKey, String
-from sqlalchemy.orm import Mapped, mapped_column, relationship
+from sqlalchemy.orm import Mapped, mapped_column, relationship, validates
 
 from app.config.db import Base
 
@@ -21,7 +21,20 @@ class Contact(Base):
     )
     user: Mapped['User'] = relationship(back_populates='contacts')
 
-    def __init__(self, name: str, phone: str | None, email: str | None):
-        self.name = name.strip()
-        self.phone = phone
-        self.email = email.strip().lower() if email else None
+    @validates('name')
+    def validate_name(self, key, value):
+        if value:
+            return value.strip()
+        return value
+
+    @validates('email')
+    def validate_email(self, key, value):
+        if value:
+            return value.strip().lower()
+        return value
+
+    @validates('phone')
+    def validate_phone(self, key, value):
+        if value:
+            return value.strip()
+        return value
