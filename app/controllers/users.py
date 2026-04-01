@@ -13,7 +13,9 @@ from app.schemas.schemas import (
 )
 from app.services.user_service import UserService
 
-user_router = APIRouter(prefix='/users', tags=['users'])  # tags é o nome no swagger
+user_router: APIRouter = APIRouter(
+    prefix='/users', tags=['users']
+)  # tags é o nome no swagger
 
 
 async def get_service(db: AsyncSession = Depends(get_db)) -> UserService:
@@ -23,8 +25,7 @@ async def get_service(db: AsyncSession = Depends(get_db)) -> UserService:
 
 @user_router.post('/register', response_model=UserResponse, status_code=201)
 async def create(user_data: UserRequest, service: UserService = Depends(get_service)):
-    response = await service.create_user(user_data)
-    return UserResponse.model_validate(response)
+    return await service.create_user(user_data)
 
 
 @user_router.get('/', status_code=200, response_model=dict)
@@ -38,7 +39,7 @@ async def get_all(
     users, total, pages = await service.get_all_users(page, per_page)
 
     return {
-        'data': [UserResponse.model_validate(u).model_dump() for u in users],
+        'data': [UserResponse.model_validate(u) for u in users],
         'pagination': {
             'page': page,
             'per_page': per_page,
@@ -55,9 +56,7 @@ async def update(
     service: UserService = Depends(get_service),
     current_user: str = Depends(owner_required),
 ):
-
-    response = await service.update_user(id=user_id, data=user_data)
-    return UserResponse.model_validate(response)
+    return await service.update_user(id=user_id, data=user_data)
 
 
 @user_router.delete('/{user_id}', status_code=200)

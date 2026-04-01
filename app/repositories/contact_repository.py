@@ -20,7 +20,7 @@ class ContactRepository:
             await self.session.rollback()
             raise ValueError(f'Error saving contact to database: {str(e)}')
 
-    async def delete(self, id: int):
+    async def delete(self, id: int) -> bool:
         try:
             stmt = delete(Contact).where(Contact.id == id)
 
@@ -33,7 +33,7 @@ class ContactRepository:
             await self.session.rollback()
             raise ValueError(f'Error deleting contact to database: {str(e)}')
 
-    async def get_all(self, user_id, page, per_page):
+    async def get_all(self, user_id: int, page: int, per_page: int):
         try:
             stmt_contacts = (
                 select(Contact)
@@ -65,7 +65,7 @@ class ContactRepository:
         except Exception as e:
             raise ValueError(f'Error getting contact by id to database: {str(e)}')
 
-    async def find_by_id(self, id: int):
+    async def find_by_id(self, id: int) -> Contact:
         try:
             contact = await self.session.get(Contact, id)
             return contact

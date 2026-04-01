@@ -2,26 +2,23 @@ from pytest import mark
 from app.controllers.contacts import get_service
 from app.config.jwt import create_access_token, owner_required
 from app.errors.exceptions import ForbiddenError, NotFoundError
+from tests.factories import ContactFactory, ContactRequestFactory
 
 
 @mark.asyncio
 class TestContactsCreate:
-    async def test_create_contact_successfully(
-        self, client, mocker, create_contacts, create_contact_request
-    ):
+    async def test_create_contact_successfully(self, client, mocker):
         user_id = 1
-        contacts = create_contacts(count=1, name='João Silva')
-        contacts[0].id = 10
-        contacts[0].user_id = user_id
+        contact = ContactFactory.build(id=10, user_id=user_id, name='João Silva')
 
         mock_service = mocker.AsyncMock()
-        mock_service.create_contact.return_value = contacts[0]
+        mock_service.create_contact.return_value = contact
 
         client.app.dependency_overrides[get_service] = lambda: mock_service
         client.app.dependency_overrides[owner_required] = lambda: str(user_id)
 
         access_token = create_access_token(str(user_id))
-        payload = create_contact_request(name='João Silva').model_dump()
+        payload = ContactRequestFactory.build(name='João Silva').model_dump()
 
         response = await client.post(
             f'/users/{user_id}/contacts/',
@@ -33,9 +30,7 @@ class TestContactsCreate:
         assert response.json()['name'] == 'João Silva'
         assert response.json()['id'] == 10
 
-    async def test_create_contact_user_not_found(
-        self, client, mocker, create_contact_request
-    ):
+    async def test_create_contact_user_not_found(self, client, mocker):
         user_id = 999
         mock_service = mocker.AsyncMock()
         mock_service.create_contact.side_effect = NotFoundError()
@@ -44,7 +39,7 @@ class TestContactsCreate:
         client.app.dependency_overrides[owner_required] = lambda: str(user_id)
 
         access_token = create_access_token(str(user_id))
-        payload = create_contact_request().model_dump()
+        payload = ContactRequestFactory.build().model_dump()
 
         response = await client.post(
             f'/users/{user_id}/contacts/',
@@ -57,10 +52,10 @@ class TestContactsCreate:
 
 @mark.asyncio
 class TestContactsGetAll:
-    async def test_get_all_contacts_successfully(self, client, mocker, create_contacts):
+    async def test_get_all_contacts_successfully(self, client, mocker):
         user_id = 1
         page, per_page = 1, 10
-        contacts = create_contacts(count=2)
+        contacts = ContactFactory.build_batch(size=2)
 
         for idx, contact in enumerate(contacts, start=1):
             contact.id = idx
@@ -90,22 +85,20 @@ class TestContactsGetAll:
 
 @mark.asyncio
 class TestContactsUpdate:
-    async def test_update_contact_successfully(
-        self, client, mocker, create_contacts, create_contact_request
-    ):
+    async def test_update_contact_successfully(self, client, mocker):
         user_id = 1
         contact_id = 10
-        updated_contacts = create_contacts(count=1, name='Nome Atualizado')
-        updated_contacts[0].id = contact_id
+        updated_contact = ContactFactory.build(name='Nome Atualizado')
+        updated_contact.id = contact_id
 
         mock_service = mocker.AsyncMock()
-        mock_service.update_contact.return_value = updated_contacts[0]
+        mock_service.update_contact.return_value = updated_contact
 
         client.app.dependency_overrides[get_service] = lambda: mock_service
         client.app.dependency_overrides[owner_required] = lambda: str(user_id)
 
         access_token = create_access_token(str(user_id))
-        payload = create_contact_request(name='Nome Atualizado').model_dump()
+        payload = ContactRequestFactory.build(name='Nome Atualizado').model_dump()
 
         response = await client.put(
             f'/users/{user_id}/contacts/{contact_id}',
@@ -116,9 +109,7 @@ class TestContactsUpdate:
         assert response.status_code == 200
         assert response.json()['name'] == 'Nome Atualizado'
 
-    async def test_update_contact_forbidden(
-        self, client, mocker, create_contact_request
-    ):
+    async def test_update_contact_forbidden(self, client, mocker):
         user_id = 1
         contact_id = 10
 
@@ -130,7 +121,7 @@ class TestContactsUpdate:
         client.app.dependency_overrides[owner_required] = lambda: str(user_id)
 
         access_token = create_access_token(str(user_id))
-        payload = create_contact_request().model_dump()
+        payload = ContactRequestFactory.build().model_dump()
 
         response = await client.put(
             f'/users/{user_id}/contacts/{contact_id}',

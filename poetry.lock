@@ -75,6 +75,24 @@ idna = ">=2.8"
 trio = ["trio (>=0.32.0)"]
 
 [[package]]
+name = "async-factory-boy"
+version = "1.0.1"
+description = "factory_boy extension with asynchronous ORM support"
+optional = false
+python-versions = ">=3.7"
+groups = ["dev"]
+files = [
+    {file = "async_factory_boy-1.0.1-py2.py3-none-any.whl", hash = "sha256:a0a652776ee164b60a45be06aca44a18781710447de1c534dda82d6cfe23f026"},
+    {file = "async_factory_boy-1.0.1.tar.gz", hash = "sha256:af3a42d9c26b86cc427faf5159ac2e8541b5564bf30424282eb866620af4e143"},
+]
+
+[package.dependencies]
+factory-boy = ">=3.0.0"
+
+[package.extras]
+dev = ["SQLAlchemy", "coverage", "flake8", "isort", "tortoise-orm (>=0.18.1)", "tox", "wheel (>=0.32.0)", "zest.releaser[recommended]"]
+
+[[package]]
 name = "bcrypt"
 version = "5.0.0"
 description = "Modern password hashing for your software and your servers"
@@ -2912,4 +2930,4 @@ dev = ["pytest", "setuptools"]
 [metadata]
 lock-version = "2.1"
 python-versions = ">=3.14,<4.0"
-content-hash = "effe2a8d3fc72dccdafbab5c2d93953148de5c4002ca6627c53fdab5380fea38"
+content-hash = "53882a23991957b76f9c11480e5a56de7ae57d3dcdc7949be7ec9e7dafc384d0"

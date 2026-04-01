@@ -18,7 +18,7 @@ class UserRepository:
             await self.session.rollback()
             raise ValueError(f'Error saving user to database: {str(e)}')
 
-    async def delete(self, user_id: int):
+    async def delete(self, user_id: int) -> bool:
         try:
             stmt = delete(User).where(User.id == user_id)
 
@@ -67,14 +67,14 @@ class UserRepository:
         except Exception as e:
             raise ValueError(f'Error getting user by id to database: {str(e)}')
 
-    async def find_by_id(self, user_id: int):
+    async def find_by_id(self, user_id: int) -> User:
         try:
             user = await self.session.get(User, user_id)
             return user
         except Exception as e:
             raise ValueError(f'Error finding user by id to database: {str(e)}')
 
-    async def find_by_email(self, email: str):
+    async def find_by_email(self, email: str) -> User:
         try:
             stmt = select(User).where(User.email == email).limit(1)
             user = (await self.session.execute(stmt)).scalar()

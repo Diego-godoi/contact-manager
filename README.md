@@ -1,128 +1,82 @@
-# 📇 Contact Manager API
+# API de Gerenciamento de Contatos (Contact Manager)
 
-A high-performance RESTful API for contact management, built with **FastAPI**. The project follows a robust layered architecture (**Controller -> Service -> Repository**), ensuring that business logic, data persistence, and entry interfaces are completely decoupled and testable.
+API REST para gerenciamento de usuários, autenticação, recuperação de senha e contatos, desenvolvida com FastAPI.
 
----
+## Visão Geral
 
-## 🏗️ Design Patterns & Architecture
+- **Arquitetura:** Aplicação assíncrona seguindo o padrão Controller -> Service -> Repository.
+- **Banco de Dados:** SQLite com suporte assíncrono via SQLAlchemy 2.0 e `aiosqlite`.
+- **Segurança:** Autenticação JWT (Access/Refresh Tokens), hash de senhas com Bcrypt e tokens de recuperação com SHA-256.
+- **Recursos:** Verificação de propriedade de recursos (ownership), rate limiting global e headers de segurança.
+- **Documentação:** Swagger UI disponível em `/swagger`.
 
-- **App Factory Pattern:** The application is instantiated via a `create_app()` function, facilitating configuration across different environments (development, testing, production) and allowing for a clean initialization of middlewares and routes.
-- **Layered Architecture:** Clear separation between the transport layer (Controllers), business logic (Services), and data access (Repositories).
-- **Dependency Injection:** Extensive use of FastAPI's dependency injection system to manage database sessions and service lifetimes.
+## Tecnologias Utilizadas
 
----
+- **Framework:** FastAPI & Pydantic v2.
+- **Persistência:** SQLAlchemy 2.0 & SQLite.
+- **Autenticação:** `python-jose` (JWT) e `bcrypt`.
+- **E-mail:** `fastapi-mail` para fluxo de recuperação de senha.
+- **Qualidade:** `pytest` (com plugins async e mock), `ruff` (lint/format).
+- **Gerenciamento:** Poetry e Taskipy.
 
-## 📂 Project Structure
+## Configuração do Ambiente
 
-The code organization reflects the **Separation of Concerns** principle:
-
-```text
-.
-├── app
-│   ├── config          # DB, JWT, and Environment configurations
-│   ├── controllers     # Endpoints and input validation (HTTP Layer)
-│   ├── errors          # Exception handlers and custom error responses
-│   ├── models          # SQLAlchemy Models (Database definitions)
-│   ├── repositories    # Data persistence and queries (Data Access Layer)
-│   ├── schemas         # DTOs and data validation (Pydantic v2)
-│   └── services        # Business logic and orchestration (Business Layer)
-├── tests               # Test suite (Unit and Integration)
-├── pyproject.toml      # Dependency management and Taskipy scripts
-└── run.py              # Application Entry Point
-```
-
----
-
-## ⚡ Asynchronous Architecture & Performance
-
-The project is designed to be **non-blocking** from end-to-end:
-
-- **Async I/O:** Powered by `SQLAlchemy 2.0` with the `ext.asyncio` extension and the `aiosqlite` driver, ensuring that database operations do not block the _Event Loop_.
-- **CPU-Bound Offloading:** Intensive tasks, such as password hashing with `bcrypt`, are delegated to separate threads via `asyncio.to_thread`. This keeps the API responsive even under heavy authentication loads.
-
----
-
-## 🛠️ Technology Stack
-
-- **Framework:** [FastAPI](https://fastapi.tiangolo.com/) (Asynchronous focus).
-- **Database:** SQLite (via `aiosqlite` for async support).
-- **ORM:** [SQLAlchemy 2.0](https://www.sqlalchemy.org/).
-- **Security:** `python-jose` (JWT), `bcrypt` (Hashing), `SlowAPI` (Rate Limiting).
-- **Tooling:** `Ruff` (Linter/Formatter), `Taskipy` (Task Runner), `Poetry`.
-
----
-
-## 🔐 Security & Middlewares
-
-- **JWT Authentication:** Dual token system (`access` and `refresh`).
-- **Ownership Control:** The `owner_required` dependency ensures data isolation: a user can never access or modify another user's resources.
-- **Security Headers:** Custom middleware injecting:
-  - **CSP (Content Security Policy):** Specifically configured to allow only necessary assets for Swagger UI while blocking everything else (`default-src 'none'`).
-  - **HSTS, X-Content-Type-Options, and X-Frame-Options** for protection against common web vulnerabilities.
-- **Rate Limiting:** Active brute-force protection on critical endpoints.
-
----
-
-## 🧪 Testing Strategy (~90% Coverage)
-
-System reliability is guaranteed by three testing levels using **Pytest**:
-
-1.  **Unit Tests (Controllers):** Tests route behavior in isolation using _Mocks_ for the Service layer.
-2.  **Unit Tests (Services):** Validates isolated business rules using _Mocks_ for the Repository layer.
-3.  **Integration Tests (Repository/API):** Full-flow tests using an **in-memory SQLite** database.
-
----
-
-## 🚀 How to Run
-
-### 1. Prerequisites
+### Pré-requisitos
 
 - Python 3.14+
 - Poetry
 
-### 2. Setup
+### Instalação
 
 ```bash
-# Install dependencies
 poetry install
-
-# Environment setup - Fill in the required variables
 cp .env.example .env
 ```
 
-### 3. Useful Commands (via Taskipy)
+### Variáveis de Ambiente Obrigatórias
 
-| Command                  | Description                                            |
-| :----------------------- | :----------------------------------------------------- |
-| `poetry run task run`    | Starts the server in development mode (`fastapi dev`). |
-| `poetry run task test`   | Runs the test suite with a coverage report.            |
-| `poetry run task lint`   | Runs static code analysis with **Ruff**.               |
-| `poetry run task format` | Automatically formats the code.                        |
+Configurações necessárias no arquivo `.env`:
 
----
+- `SECRET_KEY`, `MAIL_USERNAME`, `MAIL_PASSWORD`, `MAIL_FROM`.
 
-## 📍 Key Endpoints
+_Nota: O banco de dados é criado automaticamente na inicialização. O CORS está configurado para `http://localhost:8080` por padrão._
 
-The full interactive documentation (**Swagger UI**) is available at `/swagger`.
+## Comandos Úteis
 
-| Method | Endpoint                | Auth/Protection | Description                       |
-| :----- | :---------------------- | :-------------- | :-------------------------------- |
-| POST   | `/users/`               | Public          | Register a new user.              |
-| POST   | `/users/login`          | Public          | Authenticate and generate tokens. |
-| GET    | `/users/refresh`        | Refresh Token   | Renew access token.               |
-| GET    | `/users/{id}/contacts/` | JWT + Owner     | List user's contacts.             |
-| POST   | `/users/{id}/contacts/` | JWT + Owner     | Create a new contact.             |
+| Comando                  | Descrição                               |
+| :----------------------- | :-------------------------------------- |
+| `poetry run task run`    | Inicia o servidor de desenvolvimento    |
+| `poetry run task test`   | Executa a suíte de testes com cobertura |
+| `poetry run task lint`   | Executa a verificação do Ruff           |
+| `poetry run task format` | Formata o código automaticamente        |
 
----
+## Endpoints Principais
 
-## 📄 License
+Acesse `/swagger` para detalhes de payloads e respostas.
 
-Distributed under the MIT License.
+### Autenticação e Usuários
 
----
+- **Registro:** `POST /users/register`
+- **Login:** `POST /auth/login` (Retorna Access e Refresh tokens)
+- **Token:** `GET /auth/refresh` (Gera novo Access token)
+- **Perfil:** `GET /auth/me`
+- **Recuperação:** `/auth/forgot-password` e `/auth/reset-password`
 
-## 🌟 Support & Contact
+### Gerenciamento de Contatos
 
-If this project helped you or you found it interesting, please **leave a star (⭐)** on the repository! It greatly helps the project's visibility.
+_Todos os endpoints abaixo exigem token de acesso e validam se o usuário é o dono do recurso._
 
-**Developed by Diego Godoi** 📧 **Email:** diegogodoimartins.11@gmail.com
+- **Listagem:** `GET /users/{user_id}/contacts/` (Com paginação)
+- **Criação:** `POST /users/{user_id}/contacts/`
+- **Edição:** `PUT /users/{user_id}/contacts/{id}`
+- **Exclusão:** `DELETE /users/{user_id}/contacts/{id}`
+
+## Segurança
+
+- Rate limiting configurado para `200/dia` e `50/hora`.
+- Implementação de headers CSP, HSTS, X-Content-Type e X-Frame-Options.
+- As tabelas do SQLite utilizam chaves estrangeiras (ativadas via pragmas de conexão).
+
+## Licença
+
+MIT

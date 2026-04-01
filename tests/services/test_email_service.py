@@ -1,14 +1,15 @@
 from pytest import mark
 
 from app.services.email_service import EmailService
+from tests.factories import UserFactory
 
 
 @mark.asyncio
 class TestEmailServiceSendPasswordResetEmail:
-    async def test_send_email_successfully(self, mocker, create_users):
+    async def test_send_email_successfully(self, mocker):
         token = 'token_example_123'
 
-        user = create_users(count=1)[0]
+        user = UserFactory.build()
         mock_fm = mocker.AsyncMock()
 
         await EmailService(mail_engine=mock_fm).send_password_reset_email(user, token)

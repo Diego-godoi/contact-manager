@@ -37,14 +37,20 @@ def register_error_handlers(app: FastAPI):
 
             if error_type == 'string_too_short':
                 min_len = ctx.get('min_length', 1)
-                if min_len > 1:
-                    message = f"The field '{field}' must be at least {min_len} characters long"
-                else:
-                    message = f"The field '{field}' cannot be empty"
-            elif error_type == 'value_error.email':
+                message = (
+                    f"The field '{field}' must be at least {min_len} characters long"
+                    if min_len > 1
+                    else f"The field '{field}' cannot be empty"
+                )
+
+            elif field == 'email' and (
+                error_type == 'value_error' or 'email' in error_type
+            ):
                 message = 'Invalid email format'
+
             elif error_type == 'string_pattern_mismatch':
                 message = f"The field '{field}' contains invalid characters"
+
             else:
                 message = error['msg'].capitalize()
 
@@ -67,4 +73,4 @@ def register_error_handlers(app: FastAPI):
 
     @app.exception_handler(Exception)
     async def handle_exception(request: Request, exc: Exception):
-        return JSONResponse(status_code=500, content={'error': str(exc)})
+        return JSONResponse(status_code=500, content={'error': 'Internal Error Server'})

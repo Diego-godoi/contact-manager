@@ -8,10 +8,10 @@ from app.repositories.user_repository import UserRepository
 from app.schemas.schemas import ContactRequest, ContactResponse
 from app.services.contact_service import ContactService
 
-contact_router = APIRouter(prefix='/users', tags=['contacts'])
+contact_router: APIRouter = APIRouter(prefix='/users', tags=['contacts'])
 
 
-async def get_service(db: AsyncSession = Depends(get_db)):
+async def get_service(db: AsyncSession = Depends(get_db)) -> ContactService:
     user_repository = UserRepository(db)
     contact_repository = ContactRepository(db)
     return ContactService(
@@ -33,7 +33,7 @@ async def get_all(
 ):
     contacts, total, pages = await service.get_all_contacts(user_id, page, per_page)
     return {
-        'data': [ContactResponse.model_validate(c).model_dump() for c in contacts],
+        'data': [ContactResponse.model_validate(c) for c in contacts],
         'pagination': {
             'page': page,
             'per_page': per_page,
@@ -52,10 +52,7 @@ async def create(
     service: ContactService = Depends(get_service),
     current_user: str = Depends(owner_required),
 ):
-
-    response = await service.create_contact(user_id=user_id, data=contact_data)
-
-    return ContactResponse.model_validate(response)
+    return await service.create_contact(user_id=user_id, data=contact_data)
 
 
 @contact_router.delete('/{user_id}/contacts/{id}', status_code=200)
@@ -80,7 +77,4 @@ async def update(
     service: ContactService = Depends(get_service),
     current_user: str = Depends(owner_required),
 ):
-
-    response = await service.update_contact(user_id=user_id, id=id, data=contact_data)
-
-    return ContactResponse.model_validate(response)
+    return await service.update_contact(user_id=user_id, id=id, data=contact_data)

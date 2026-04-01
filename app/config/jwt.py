@@ -7,7 +7,7 @@ from jose import JWTError, jwt
 from app.config.settings import settings
 from app.errors.exceptions import ForbiddenError
 
-bearer_scheme = HTTPBearer(auto_error=False)
+bearer_scheme: HTTPBearer = HTTPBearer(auto_error=False)
 
 
 def create_tokens(user_id: int):
@@ -29,7 +29,7 @@ def create_tokens(user_id: int):
     return access_token, refresh_token
 
 
-def create_access_token(user_id: int):
+def create_access_token(user_id: int) -> str:
     info = {
         'sub': str(user_id),
         'type': 'access',
