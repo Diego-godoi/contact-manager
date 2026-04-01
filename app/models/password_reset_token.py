@@ -6,6 +6,8 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship
 from app.config.db import Base
 from datetime import datetime, timezone
 
+import asyncio
+
 import hashlib
 
 if TYPE_CHECKING:
@@ -33,8 +35,14 @@ class PasswordResetToken(Base):
 
     user: Mapped['User'] = relationship(back_populates='password_reset_tokens')
 
-    async def set_token(self, raw_token):
-        self.token_hash = hashlib.sha256(raw_token.encode()).hexdigest()
+    @staticmethod
+    async def hash_token(raw_token: str) -> str:
+        return await asyncio.to_thread(
+            lambda: hashlib.sha256(raw_token.encode()).hexdigest()
+        )
+
+    async def set_token(self, raw_token: str):
+        self.token_hash = await self.hash_token(raw_token)
 
     @property
     def is_expired(self) -> bool:

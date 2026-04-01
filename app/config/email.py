@@ -13,11 +13,13 @@ conf = ConnectionConfig(
     MAIL_DEBUG=settings.MAIL_DEBUG,
     MAIL_FROM=settings.MAIL_FROM,
     MAIL_FROM_NAME=settings.MAIL_FROM_NAME,
-    VALIDATE_CERTS=True,
+    VALIDATE_CERTS=settings.VALIDATE_CERTS,
     SUPPRESS_SEND=settings.SUPPRESS_SEND,
     TEMPLATE_FOLDER=Path(__file__).parent.parent / 'templates',
     USE_CREDENTIALS=settings.USE_CREDENTIALS,
 )
 
+
 # Instância global do motor de e-mail
-fm = FastMail(conf)
+def get_mail_engine() -> FastMail:
+    return FastMail(conf)

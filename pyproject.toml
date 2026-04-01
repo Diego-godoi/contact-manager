@@ -18,7 +18,7 @@ fastapi = { extras = ["standard"], version = "^0.135.2" }
 fastapi-mail = "^1.6.2"
 pydantic = "^2.12.5"
 pydantic-settings = "^2.13.1"
-python = "^3.12"
+python = ">=3.14,<4.0"
 python-jose = "^3.5.0"
 python-multipart = "^0.0.22"
 slowapi = "^0.1.9"
@@ -48,8 +48,8 @@ preview = true
 quote-style = "single"
 
 [tool.taskipy.tasks]
-clean_test = "rm -rf .pytest_cache .coverage htmlcov && task test"
-clear = "rm -rf .pytest_cache .coverage htmlcov"
+clean_test = "rm -rf .pytest_cache .coverage htmlcov .ruff_cache __pycache__ test.db && task test"
+clear = "rm -rf .pytest_cache .coverage htmlcov .ruff_cache __pycache__ test.db contact_manager.sqlite"
 format = "ruff format"
 lint = "ruff check"
 post_test = "coverage html"

@@ -18,18 +18,19 @@ from app.schemas.schemas import (
 )
 from app.services.email_service import EmailService
 from app.repositories.token_repository import TokenRepository
-from app.config.email import fm
+from app.config.email import get_mail_engine
 
-auth_router = APIRouter(prefix='/auth', tags=['auth'])
+auth_router: APIRouter = APIRouter(prefix='/auth', tags=['auth'])
 
 
-async def get_service(db: AsyncSession = Depends(get_db)):
+async def get_service(db: AsyncSession = Depends(get_db)) -> AuthService:
     user_repo = UserRepository(db)
     token_repo = TokenRepository(db)
-    email_service = EmailService(mail_engine=fm)
-    return AuthService(
-        email_service=email_service, token_repo=token_repo, user_repo=user_repo
-    )
+    return AuthService(token_repo=token_repo, user_repo=user_repo)
+
+
+async def get_email_service(mail_engine=Depends(get_mail_engine)) -> EmailService:
+    return EmailService(mail_engine)
 
 
 @auth_router.post('/login', response_model=TokenResponse, status_code=200)
@@ -40,7 +41,7 @@ async def login(login_data: LoginSchema, service: AuthService = Depends(get_serv
 
 @auth_router.get('/refresh', status_code=200)
 async def refresh(user_id: str = Depends(verify_refresh_token)):
-    new_access_token = create_access_token(user_id)
+    new_access_token: str = create_access_token(user_id)
 
     return {'detail': 'Access token created', 'access_token': new_access_token}
 
@@ -50,8 +51,7 @@ async def me(
     user_id: str = Depends(verify_access_token),
     service: AuthService = Depends(get_service),
 ):
-    user = await service.get_user(user_id)
-    return UserResponse.model_validate(user)
+    return await service.get_user(int(user_id))
 
 
 @auth_router.post('/forgot-password', status_code=200)
@@ -59,8 +59,12 @@ async def forgot_password(
     data: EmailSchema,
     background_tasks: BackgroundTasks,
     service: AuthService = Depends(get_service),
+    email_service: EmailService = Depends(get_email_service),
 ):
-    await service.email_forgot_password_link(data, background_tasks)
+    result = await service.prepare_password_reset(data)
+    if result is not None:
+        user, token = result
+        background_tasks.add_task(email_service.send_password_reset_email, user, token)
     return {'detail': 'A email with password reset link has been sent to you.'}
 
 

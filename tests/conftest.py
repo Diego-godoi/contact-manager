@@ -7,18 +7,18 @@ from sqlalchemy.ext.asyncio import (
 )
 
 from app import create_app
-from app.config.db import Base
+from app.config.db import Base, attach_sqlite_pragmas
 from app.repositories.user_repository import UserRepository
 from app.repositories.contact_repository import ContactRepository
 from app.repositories.token_repository import TokenRepository
 
-TEST_DATABASE_URL = 'sqlite+aiosqlite:///:memory:'
+TEST_DATABASE_URL = 'sqlite+aiosqlite:///test.db'
 
 
 @pytest_asyncio.fixture
 async def async_engine():
     engine = create_async_engine(TEST_DATABASE_URL, echo=False, future=True)
-
+    attach_sqlite_pragmas(engine, TEST_DATABASE_URL)
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
 
@@ -56,7 +56,7 @@ async def token_repository(async_session):
     return TokenRepository(async_session)
 
 
-@pytest_asyncio.fixture(autouse=True)
+@pytest_asyncio.fixture
 async def setup_factory_session(async_session: AsyncSession):
 
     from tests import factories

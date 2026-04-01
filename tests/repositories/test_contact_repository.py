@@ -5,11 +5,9 @@ from tests.factories import ContactFactory, UserFactory
 @mark.asyncio
 class TestContactRepositorySave:
     async def test_save_contact_persists_data_correctly(
-        self,
-        contact_repository,
-        user_repository,
+        self, contact_repository, user_repository, setup_factory_session
     ):
-        user = await UserFactory.create(with_contact=None, with_token=None)
+        user = await UserFactory.create()
 
         contact_data = ContactFactory.build(
             name='João Silva', phone='11999999999', user=user
@@ -21,10 +19,9 @@ class TestContactRepositorySave:
         assert saved_contact.name == 'João Silva'
         assert saved_contact.phone == '11999999999'
 
-    @mark.xfail  # sqlite permite o salvamento mesmo com violacao de FK
     async def test_save_contact_fails_with_invalid_user(self, contact_repository):
         # Tenta salvar um contato para um user_id que não existe no banco (violação de FK)
-        contact = ContactFactory.build()
+        contact = ContactFactory.build(user_id=999, user=None)
 
         with raises(ValueError) as exc_info:
             await contact_repository.save(9999, contact)
@@ -35,9 +32,7 @@ class TestContactRepositorySave:
 @mark.asyncio
 class TestContactRepositoryDelete:
     async def test_deletes_contact_correctly(
-        self,
-        contact_repository,
-        user_repository,
+        self, contact_repository, user_repository, setup_factory_session
     ):
         contact = await ContactFactory.create()
 
@@ -54,12 +49,10 @@ class TestContactRepositoryDelete:
 @mark.asyncio
 class TestContactRepositoryGetAll:
     async def test_get_all_returns_only_contacts_from_specific_user(
-        self,
-        contact_repository,
-        user_repository,
+        self, contact_repository, user_repository, setup_factory_session
     ):
         user1 = await UserFactory.create()
-        await UserFactory.create(with_contact=True, with_token=None)
+        await UserFactory.create(contact__size=1)
 
         await ContactFactory.create(user=user1)
         await ContactFactory.create(user=user1)
@@ -86,9 +79,7 @@ class TestContactRepositoryGetAll:
 @mark.asyncio
 class TestContactRepositoryExistsAndFind:
     async def test_exists_by_id_returns_correct_bool(
-        self,
-        contact_repository,
-        user_repository,
+        self, contact_repository, user_repository, setup_factory_session
     ):
         contact = await ContactFactory.create()
 
@@ -96,9 +87,7 @@ class TestContactRepositoryExistsAndFind:
         assert await contact_repository.exists_by_id(9999) is False
 
     async def test_find_by_id_returns_contact_with_details(
-        self,
-        contact_repository,
-        user_repository,
+        self, contact_repository, user_repository, setup_factory_session
     ):
         contact = await ContactFactory.create(name='Maria')
 

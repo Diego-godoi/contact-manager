@@ -42,12 +42,12 @@ class User(Base):
             return value.strip().lower()
         return value
 
-    async def set_password(self, password):
+    async def set_password(self, raw_password: str):
         self.password = await asyncio.to_thread(
-            lambda: hashpw(password.encode('utf-8'), gensalt()).decode('utf-8')
+            lambda: hashpw(raw_password.encode('utf-8'), gensalt()).decode('utf-8')
         )
 
-    async def check_password(self, password):
+    async def check_password(self, raw_password: str):
         return await asyncio.to_thread(
-            lambda: checkpw(password.encode('utf-8'), self.password.encode('utf-8'))
+            lambda: checkpw(raw_password.encode('utf-8'), self.password.encode('utf-8'))
         )

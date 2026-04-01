@@ -13,20 +13,22 @@ class TestUserRepositorySave:
         assert saved_user.email == user.email
         assert saved_user.password == user.password
 
-    async def test_save_fails_with_email_already_exists(self, user_repository):
-        users = UserFactory.build_batch(size=2, email='duplicate@example.com')
-        await user_repository.save(users[0])
+    async def test_save_fails_with_email_already_exists(
+        self, user_repository, setup_factory_session
+    ):
+        user = UserFactory.build(email='duplicate@example.com')
+        await UserFactory.create(email='duplicate@example.com')
 
         with raises(ValueError) as exc_info:
-            await user_repository.save(users[1])
+            await user_repository.save(user)
 
         assert 'Error saving user to database' in str(exc_info.value)
 
 
 @mark.asyncio
 class TestUserRepositoryDelete:
-    async def test_deletes_user_correctly(self, user_repository):
-        saved_user = await UserFactory.create(with_token=None, with_contact=None)
+    async def test_deletes_user_correctly(self, user_repository, setup_factory_session):
+        saved_user = await UserFactory.create()
 
         result = await user_repository.delete(saved_user.id)
 
@@ -41,8 +43,10 @@ class TestUserRepositoryDelete:
 
 @mark.asyncio
 class TestUserRepositoryGetAll:
-    async def test_get_all_returns_paginated_users(self, user_repository):
-        await UserFactory.create_batch(size=5, with_token=None, with_contact=None)
+    async def test_get_all_returns_paginated_users(
+        self, user_repository, setup_factory_session
+    ):
+        await UserFactory.create_batch(size=5)
 
         # Busca primeira página com 3 itens
         result_users, total = await user_repository.get_all(page=1, per_page=3)
@@ -50,8 +54,10 @@ class TestUserRepositoryGetAll:
         assert len(result_users) == 3
         assert total == 5
 
-    async def test_get_all_returns_second_page_correctly(self, user_repository):
-        await UserFactory.create_batch(size=5, with_token=None, with_contact=None)
+    async def test_get_all_returns_second_page_correctly(
+        self, user_repository, setup_factory_session
+    ):
+        await UserFactory.create_batch(size=5)
 
         # Busca segunda página com 3 itens
         result_users, total = await user_repository.get_all(page=2, per_page=3)
@@ -68,18 +74,22 @@ class TestUserRepositoryGetAll:
 
 @mark.asyncio
 class TestUserRepositoryExistsByEmail:
-    async def test_exists_by_email_returns_true_when_user_exists(self, user_repository):
+    async def test_exists_by_email_returns_true_when_user_exists(
+        self, user_repository, setup_factory_session
+    ):
         await UserFactory.create(
-            email='exists@example.com', with_token=None, with_contact=None
+            email='exists@example.com',
         )
 
         exists = await user_repository.exists_by_email('exists@example.com')
 
         assert exists is True
 
-    async def test_exists_by_email_is_case_insensitive(self, user_repository):
+    async def test_exists_by_email_is_case_insensitive(
+        self, user_repository, setup_factory_session
+    ):
         await UserFactory.create(
-            email='test@example.com', with_token=None, with_contact=None
+            email='test@example.com',
         )
 
         exists = await user_repository.exists_by_email('TEST@EXAMPLE.COM')
@@ -97,10 +107,9 @@ class TestUserRepositoryExistsByEmail:
 @mark.asyncio
 class TestUserRepositoryExistsById:
     async def test_exists_by_id_returns_true_when_user_exists(
-        self,
-        user_repository,
+        self, user_repository, setup_factory_session
     ):
-        saved_user = await UserFactory.create(with_token=None, with_contact=None)
+        saved_user = await UserFactory.create()
 
         exists = await user_repository.exists_by_id(saved_user.id)
 
@@ -114,8 +123,10 @@ class TestUserRepositoryExistsById:
 
 @mark.asyncio
 class TestUserRepositoryFindById:
-    async def test_find_by_id_returns_user_when_exists(self, user_repository):
-        saved_user = await UserFactory.create(with_token=None, with_contact=None)
+    async def test_find_by_id_returns_user_when_exists(
+        self, user_repository, setup_factory_session
+    ):
+        saved_user = await UserFactory.create()
 
         found_user = await user_repository.find_by_id(saved_user.id)
 
@@ -130,9 +141,11 @@ class TestUserRepositoryFindById:
 
 @mark.asyncio
 class TestUserRepositoryFindByEmail:
-    async def test_find_by_email_returns_user_when_exists(self, user_repository):
+    async def test_find_by_email_returns_user_when_exists(
+        self, user_repository, setup_factory_session
+    ):
         saved_user = await UserFactory.create(
-            email='find@example.com', with_token=None, with_contact=None
+            email='find@example.com',
         )
 
         found_user = await user_repository.find_by_email('find@example.com')
@@ -148,7 +161,7 @@ class TestUserRepositoryFindByEmail:
         assert await user_repository.find_by_email('nonexistent@example.com') is None
 
     async def test_find_by_email_returns_correct_user_with_exact_email(
-        self, user_repository
+        self, user_repository, setup_factory_session
     ):
         await UserFactory.create_batch(size=2)
         user = await UserFactory.create(email='user2@example.com')

@@ -1,4 +1,3 @@
-from app.services.email_service import EmailService
 from app.repositories.user_repository import UserRepository
 from app.models.user import User
 from app.models.password_reset_token import PasswordResetToken
@@ -7,6 +6,7 @@ from app.errors.exceptions import NotFoundError, InvalidCredentialsError
 import secrets
 from app.repositories.token_repository import TokenRepository
 from datetime import timedelta, datetime, timezone
+from app.schemas.schemas import LoginSchema, EmailSchema, ResetPasswordRequest
 
 
 class AuthService:
@@ -14,19 +14,17 @@ class AuthService:
         self,
         user_repo: UserRepository,
         token_repo: TokenRepository,
-        email_service: EmailService,
     ):
         self.user_repo = user_repo
         self.token_repo = token_repo
-        self.email_service = email_service
 
-    async def login_user(self, data):
+    async def login_user(self, data: LoginSchema):
         user: User = await self.user_repo.find_by_email(data.email)
         if user is None:
-            raise NotFoundError(detail='User not found')
+            raise InvalidCredentialsError(detail='Invalid email or password')
 
         if not await user.check_password(data.password):
-            raise InvalidCredentialsError(detail='Invalid password')
+            raise InvalidCredentialsError(detail='Invalid email or password')
 
         return create_tokens(user.id)
 
@@ -36,39 +34,39 @@ class AuthService:
             raise NotFoundError(detail='User not found')
         return user
 
-    async def email_forgot_password_link(self, data, background_tasks):
+    async def prepare_password_reset(self, data: EmailSchema):
         user = await self.user_repo.find_by_email(data.email)
 
-        if user is None:
-            raise NotFoundError(detail='User not found')
-
         raw_token = secrets.token_urlsafe(32)
+        if user is None:
+            return None
+
         expires = datetime.now(timezone.utc) + timedelta(minutes=30)
 
         token = PasswordResetToken(user_id=user.id, expires_at=expires)
         await token.set_token(raw_token)
 
-        await self.token_repo.save(token)
+        await self.token_repo.replace_all_by_user_id(user.id, token)
 
-        background_tasks.add_task(
-            self.email_service.send_password_reset_email, user, raw_token
-        )
+        return (user, raw_token)
 
-    async def reset_password(self, data):
-        token = await self.token_repo.find_by_token_hash(data.token)
+    async def reset_password(self, data: ResetPasswordRequest):
+        hashed_token: str = await PasswordResetToken.hash_token(data.token)
+        token = await self.token_repo.find_by_token_hash(hashed_token)
         if token is None:
             raise NotFoundError(detail='Token not found')
 
         if token.is_expired:
-            await self.token_repo.delete(token.id)
+            await self.token_repo.delete_all_by_user_id(token.user_id)
             raise InvalidCredentialsError(detail='Token has expired')
 
         user = await self.user_repo.find_by_id(token.user_id)
         if user is None:
+            await self.token_repo.delete_all_by_user_id(token.user_id)
             raise NotFoundError(detail='User not found')
 
         await user.set_password(data.new_password)
 
         await self.user_repo.save(user)
 
-        await self.token_repo.delete(token.id)
+        await self.token_repo.delete_all_by_user_id(user.id)

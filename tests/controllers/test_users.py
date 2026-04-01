@@ -9,7 +9,6 @@ from tests.factories import UserRequestFactory, UserFactory
 class TestUsersRegister:
     async def test_create_successfully(self, client, mocker):
         user = UserFactory.build(email='test@example.com')
-        user.id = 1
 
         mock_service = mocker.AsyncMock()
         mock_service.create_user.return_value = user
@@ -51,9 +50,6 @@ class TestUsersGetAll:
     async def test_get_all_successfully(self, client, mocker):
         users = UserFactory.build_batch(size=3)
 
-        for idx, user in enumerate(users, start=1):
-            user.id = idx
-
         mock_service = mocker.AsyncMock()
         mock_total = 3
         mock_pages = 1
@@ -78,7 +74,6 @@ class TestUsersGetAll:
 
     async def test_get_all_with_pagination(self, client, mocker):
         user = UserFactory.build()
-        user.id = 1
 
         mock_service = mocker.AsyncMock()
         mock_total = 25
@@ -142,9 +137,8 @@ class TestUsersGetAll:
 @mark.asyncio
 class TestUsersUpdate:
     async def test_update_successfully(self, client, mocker):
-        user_id = 1
         mock_updated_user = UserFactory.build(
-            id=user_id, name='Updated Name', email='updated@example.com'
+            id=1, name='Updated Name', email='updated@example.com'
         )
 
         mock_service = mocker.AsyncMock()

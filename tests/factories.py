@@ -26,24 +26,17 @@ class UserFactory(BaseAsyncFactory):
     class Meta:
         model = User
 
+    id = factory.Sequence(lambda n: n)
     name = Faker('name')
     email = Faker('email')
     password = 'hashed_password_placeholder'
 
-    @factory.post_generation
-    def with_contact(obj, create, extracted, **kwargs):
-        if not create:
-            return
-        if extracted is True:
-            ContactFactory.create(user=obj, **kwargs)
-
-    @factory.post_generation
-    def with_token(obj, create, extracted, **kwargs):
-        if not create:
-            return
-
-        if extracted is True:
-            PasswordResetTokenFactory.create(user=obj, **kwargs)
+    contact = factory.RelatedFactoryList(
+        'tests.factories.ContactFactory', factory_related_name='user', size=0
+    )
+    Password_reset_token = factory.RelatedFactoryList(
+        'tests.factories.PasswordResetTokenFactory', factory_related_name='user', size=0
+    )
 
 
 class ContactFactory(BaseAsyncFactory):
@@ -62,9 +55,17 @@ class PasswordResetTokenFactory(BaseAsyncFactory):
 
     user = SubFactory(UserFactory)
     token_hash = Faker('uuid4')
+    created_at = factory.LazyFunction(lambda: datetime.now(timezone.utc))
     expires_at = LazyFunction(
         lambda: datetime.now(timezone.utc) + timedelta(minutes=30)
     )
+
+    class Params:
+        expired = factory.Trait(
+            expires_at=factory.LazyFunction(
+                lambda: datetime.now(timezone.utc) - timedelta(seconds=1)
+            )
+        )
 
 
 class UserRequestFactory(factory.Factory):

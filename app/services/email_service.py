@@ -1,12 +1,13 @@
 from fastapi_mail import FastMail, MessageSchema, MessageType
 from app.config.settings import settings
+from app.models.user import User
 
 
 class EmailService:
     def __init__(self, mail_engine: FastMail):
         self.fm = mail_engine
 
-    async def send_password_reset_email(self, user, token):
+    async def send_password_reset_email(self, user: User, token: str):
         reset_url = (
             f'{settings.FRONTEND_HOST}/reset-password?token={token}&email={user.email}'
         )

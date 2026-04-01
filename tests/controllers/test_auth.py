@@ -1,5 +1,5 @@
 from pytest import mark
-from app.controllers.auth import get_service
+from app.controllers.auth import get_service, get_email_service
 from app.config.jwt import create_access_token, create_tokens
 from app.errors.exceptions import InvalidCredentialsError, NotFoundError
 from tests.factories import (
@@ -95,8 +95,7 @@ class TestAuthRefresh:
 class TestAuthMe:
     async def test_get_me_successfully(self, client, mocker):
         user_id = 1
-        user = UserFactory.build(email='diego@example.com')
-        user.id = user_id
+        user = UserFactory.build(id=user_id, email='diego@example.com')
 
         access_token = create_access_token(user_id)
 
@@ -114,7 +113,7 @@ class TestAuthMe:
         assert data['email'] == 'diego@example.com'
         assert data['name'] == user.name
 
-        mock_service.get_user.assert_called_once_with(str(user_id))
+        mock_service.get_user.assert_called_once_with(user_id)
 
     async def test_get_me_with_invalid_token(self, client, mocker):
         mock_service = mocker.AsyncMock()
@@ -152,10 +151,14 @@ class TestAuthMe:
 class TestAuthForgotPassword:
     async def test_forgot_password_successfully(self, client, mocker):
         mock_service = mocker.AsyncMock()
+        mock_email_service = mocker.AsyncMock()
 
-        mock_service.email_forgot_password_link.return_value = None
+        user = UserFactory.build(email='exists@example.com')
+        token = 'secure-token-abc123'
+        mock_service.prepare_password_reset.return_value = (user, token)
 
         client.app.dependency_overrides[get_service] = lambda: mock_service
+        client.app.dependency_overrides[get_email_service] = lambda: mock_email_service
 
         payload = EmailSchemaFactory.build().model_dump()
         response = await client.post('/auth/forgot-password', json=payload)
@@ -166,7 +169,10 @@ class TestAuthForgotPassword:
             == 'A email with password reset link has been sent to you.'
         )
 
-        mock_service.email_forgot_password_link.assert_called_once()
+        mock_service.prepare_password_reset.assert_called_once()
+        mock_email_service.send_password_reset_email.assert_called_once_with(
+            user, token
+        )
 
     async def test_forgot_password_invalid_email_format(self, client, mocker):
         mock_service = mocker.AsyncMock()
@@ -185,15 +191,24 @@ class TestAuthForgotPassword:
 
         assert response.status_code == 422
 
-    async def test_forgot_password_with_unregistered_email(self, client, mocker):
+    async def test_forgot_password_user_not_exists(self, client, mocker):
         mock_service = mocker.AsyncMock()
-        mock_service.email_forgot_password_link.side_effect = NotFoundError()
+        mock_email_service = mocker.AsyncMock()
+
+        mock_service.prepare_password_reset.return_value = None
+
         client.app.dependency_overrides[get_service] = lambda: mock_service
+        client.app.dependency_overrides[get_email_service] = lambda: mock_email_service
 
         payload = EmailSchemaFactory.build().model_dump()
         response = await client.post('/auth/forgot-password', json=payload)
 
-        assert response.status_code == 404
+        assert response.status_code == 200
+        assert response.json()['detail'] == (
+            'A email with password reset link has been sent to you.'
+        )
+
+        mock_service.prepare_password_reset.assert_called_once()
 
 
 @mark.asyncio
