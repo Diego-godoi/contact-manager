@@ -9,6 +9,7 @@ from app.errors.exceptions import (
     ForbiddenError,
     InvalidCredentialsError,
     NotFoundError,
+    FileError,
 )
 
 
@@ -69,6 +70,10 @@ def register_error_handlers(app: FastAPI):
 
     @app.exception_handler(ForbiddenError)
     async def handle_forbidden(request: Request, exc: ForbiddenError):
+        return JSONResponse(status_code=exc.status_code, content={'error': exc.detail})
+
+    @app.exception_handler(FileError)
+    async def handle_file(request: Request, exc: FileError):
         return JSONResponse(status_code=exc.status_code, content={'error': exc.detail})
 
     @app.exception_handler(Exception)

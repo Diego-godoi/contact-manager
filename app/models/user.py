@@ -1,5 +1,5 @@
 import asyncio
-from typing import TYPE_CHECKING, List
+from typing import TYPE_CHECKING, List, Optional
 
 from bcrypt import checkpw, gensalt, hashpw
 from sqlalchemy import String
@@ -21,6 +21,10 @@ class User(Base):
         String(100), nullable=False, unique=True, index=True
     )
     password: Mapped[str] = mapped_column(String(255), nullable=False)
+    profile_picture_path: Mapped[Optional[str]] = mapped_column(
+        String(255), unique=True
+    )
+
     contacts: Mapped[List['Contact']] = relationship(
         back_populates='user',
         lazy='noload',

@@ -14,6 +14,7 @@ from app.errors.handlers import register_error_handlers
 from contextlib import asynccontextmanager
 from app.schemas.schemas import ValidationErrorResponse
 from app.config.settings import settings
+from fastapi.staticfiles import StaticFiles
 
 
 class SecurityHeadersMiddleware(BaseHTTPMiddleware):
@@ -44,7 +45,9 @@ async def lifespan(app: FastAPI):
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
 
-        yield
+    yield
+
+    await engine.dispose()
 
 
 def create_app():
@@ -71,6 +74,12 @@ def create_app():
     app.add_middleware(SlowAPIMiddleware)
 
     register_error_handlers(app)
+
+    app.mount(
+        '/static',
+        StaticFiles(directory=settings.BASE_DIR / 'app' / 'static'),
+        name='static',
+    )
 
     return app
 

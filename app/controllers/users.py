@@ -1,17 +1,14 @@
-from fastapi import APIRouter, Depends, Query
+from fastapi import APIRouter, Depends, Query, UploadFile
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config.db import get_db
-from app.config.jwt import (
-    owner_required,
-    verify_access_token,
-)
+from app.config.jwt import owner_required,verify_access_token
 from app.repositories.user_repository import UserRepository
-from app.schemas.schemas import (
-    UserRequest,
-    UserResponse,
-)
+from app.schemas.schemas import UserRequest,UserResponse
 from app.services.user_service import UserService
+
+from app.repositories.img_repository import ImageRepository
+from app.config.settings import settings
 
 user_router: APIRouter = APIRouter(
     prefix='/users', tags=['users']
@@ -20,7 +17,8 @@ user_router: APIRouter = APIRouter(
 
 async def get_service(db: AsyncSession = Depends(get_db)) -> UserService:
     repository = UserRepository(db)
-    return UserService(repository)
+    img_repository = ImageRepository(settings.BASE_DIR, settings.IMAGES_PATH)
+    return UserService(repository, img_repository)
 
 
 @user_router.post('/register', response_model=UserResponse, status_code=201)
@@ -68,3 +66,14 @@ async def delete(
     await service.delete_user(user_id)
 
     return {'detail': f'User with ID {user_id} was deleted'}
+
+
+@user_router.patch('/{user_id}/profile-picture', status_code=200)
+async def profile_picture(
+    user_id: int,
+    file: UploadFile,
+    current_user: str = Depends(owner_required),
+    service: UserService = Depends(get_service),
+):
+    file_path: str = await service.set_profile_picture(user_id, file)
+    return {'detail': 'Profile picture uploaded successfuly', 'file_path': file_path}

@@ -1,5 +1,5 @@
 from pydantic import BaseModel, ConfigDict, EmailStr, StringConstraints
-from typing import Annotated, List, Dict
+from typing import Annotated, List, Dict, Optional
 
 RequiredStr = Annotated[str, StringConstraints(min_length=1, strip_whitespace=True)]
 PasswordStr = Annotated[
@@ -23,6 +23,7 @@ class UserResponse(BaseModel):
     id: int
     name: str
     email: str
+    profile_picture_path: Optional[str] = None
 
     model_config = ConfigDict(from_attributes=True)
 

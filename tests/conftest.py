@@ -7,18 +7,31 @@ from sqlalchemy.ext.asyncio import (
 )
 
 from app import create_app
-from app.config.db import Base, attach_sqlite_pragmas
+from app.config.db import Base
 from app.repositories.user_repository import UserRepository
 from app.repositories.contact_repository import ContactRepository
 from app.repositories.token_repository import TokenRepository
+from sqlalchemy import event
+import pytest
+from app.repositories.img_repository import ImageRepository
+from app.config.db import get_db
 
 TEST_DATABASE_URL = 'sqlite+aiosqlite:///test.db'
+
+
+# event listens check de integridade de fks quando a conexao for aberta
+def _attach_sqlite_pragmas(engine, database_url: str) -> None:
+    @event.listens_for(engine.sync_engine, 'connect')
+    def set_sqlite_pragma(dbapi_connection, _):
+        cursor = dbapi_connection.cursor()
+        cursor.execute('PRAGMA foreign_keys=ON')
+        cursor.close()
 
 
 @pytest_asyncio.fixture
 async def async_engine():
     engine = create_async_engine(TEST_DATABASE_URL, echo=False, future=True)
-    attach_sqlite_pragmas(engine, TEST_DATABASE_URL)
+    _attach_sqlite_pragmas(engine, TEST_DATABASE_URL)
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
 
@@ -77,15 +90,25 @@ async def setup_factory_session(async_session: AsyncSession):
 
 
 @pytest_asyncio.fixture
-async def client():
+async def client(async_session):
     app = create_app()
+
+    async def _get_test_db():
+        yield async_session
+
+    app.dependency_overrides[get_db] = _get_test_db
 
     async with AsyncClient(
         transport=ASGITransport(app=app), base_url='http://test'
     ) as c:
         c.app = app
         app.state.limiter.enabled = False
-
         yield c
-
         app.dependency_overrides.clear()
+
+
+@pytest.fixture
+def image_repo(tmp_path):
+    base_dir = tmp_path
+    img_dir = base_dir / 'app' / 'static' / 'profile-picture'
+    return ImageRepository(base_dir=base_dir, img_dir=str(img_dir))

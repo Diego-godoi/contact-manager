@@ -1,7 +1,7 @@
 from pytest import mark
 from app.controllers.users import get_service
 from app.config.jwt import create_access_token, owner_required
-from app.errors.exceptions import NotFoundError, ConflictError
+from app.errors.exceptions import NotFoundError, ConflictError, FileError
 from tests.factories import UserRequestFactory, UserFactory
 
 
@@ -292,3 +292,51 @@ class TestUsersDelete:
         )
 
         assert response.status_code == 401
+
+
+@mark.asyncio
+class TestUsersProfilePicture:
+    async def test_set_profile_picture_successfully(self, client, mocker):
+        mock_service = mocker.AsyncMock()
+        mock_service.set_profile_picture.return_value = 'static/1.png'
+
+        client.app.dependency_overrides[get_service] = lambda: mock_service
+        client.app.dependency_overrides[owner_required] = lambda: '1'
+
+        access_token = create_access_token('1')
+
+        file_content = b'\x89PNG\r\n\x1a\n\x00\x00\x00\rIHDR\x00\x00\x00\x01'  # simula os magic numbers do png
+        file_name = 'avatar.png'
+
+        files = {'file': (file_name, file_content, 'image/png')}
+
+        response = await client.patch(
+            '/users/1/profile-picture',
+            files=files,
+            headers={'Authorization': f'Bearer {access_token}'},
+        )
+
+        assert response.status_code == 200
+        assert response.json()['detail'] == 'Profile picture uploaded successfuly'
+        assert 'file_path' in response.json()
+
+    async def test_set_profile_picture_invalid_file(self, client, mocker):
+        mock_service = mocker.AsyncMock()
+        mock_service.set_profile_picture.side_effect = FileError(
+            detail='The file is too large'
+        )
+
+        client.app.dependency_overrides[get_service] = lambda: mock_service
+        client.app.dependency_overrides[owner_required] = lambda: '1'
+
+        access_token = create_access_token('1')
+        files = {'file': ('large.png', b'too_large_content', 'image/png')}
+
+        response = await client.patch(
+            '/users/1/profile-picture',
+            files=files,
+            headers={'Authorization': f'Bearer {access_token}'},
+        )
+
+        assert response.status_code == 400
+        assert 'too large' in response.json()['error']

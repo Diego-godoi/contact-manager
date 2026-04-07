@@ -17,6 +17,9 @@ ENV/
 
 .codex
 
+*.jpg
+*.png
+
 # Python
 __pycache__/
 *.py[cod]
