@@ -30,6 +30,9 @@ class UserFactory(BaseAsyncFactory):
     name = Faker('name')
     email = Faker('email')
     password = 'hashed_password_placeholder'
+    profile_picture_path = factory.Sequence(
+        lambda n: f'static/profile-picture/user_{n}.png'
+    )
 
     contact = factory.RelatedFactoryList(
         'tests.factories.ContactFactory', factory_related_name='user', size=0

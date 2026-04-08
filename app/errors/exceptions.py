@@ -23,3 +23,8 @@ class InvalidCredentialsError(AppError):
 class ForbiddenError(AppError):
     def __init__(self, detail='Access Denied'):
         super().__init__(detail, 403)
+
+
+class FileError(AppError):
+    def __init__(self, detail: str = 'File Error'):
+        super().__init__(detail, 400)

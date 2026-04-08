@@ -14,6 +14,7 @@ from app.errors.handlers import register_error_handlers
 from contextlib import asynccontextmanager
 from app.schemas.schemas import ValidationErrorResponse
 from app.config.settings import settings
+from fastapi.staticfiles import StaticFiles
 
 
 class SecurityHeadersMiddleware(BaseHTTPMiddleware):
@@ -39,12 +40,16 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
 limiter = Limiter(key_func=get_remote_address, default_limits=['200/day', '50/hour'])
 
 
-@asynccontextmanager
+@asynccontextmanager #verificar se o app nao esta rodando em testing - Impede o uso da engine global (o que entraria em conflito com o ambiente producao e teste - deadlock)
 async def lifespan(app: FastAPI):
-    async with engine.begin() as conn:
-        await conn.run_sync(Base.metadata.create_all)
+    if not getattr(app.state, 'testing', False):
+        async with engine.begin() as conn:
+            await conn.run_sync(Base.metadata.create_all)
 
-        yield
+    yield
+
+    if not getattr(app.state, 'testing', False):
+        await engine.dispose()
 
 
 def create_app():
@@ -71,6 +76,12 @@ def create_app():
     app.add_middleware(SlowAPIMiddleware)
 
     register_error_handlers(app)
+
+    app.mount(
+        '/static',
+        StaticFiles(directory=settings.BASE_DIR / 'app' / 'static'),
+        name='static',
+    )
 
     return app
 

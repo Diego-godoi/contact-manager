@@ -1,9 +1,6 @@
 from pytest import mark, raises
-
-from app.errors.exceptions import (
-    ConflictError,
-    NotFoundError,
-)
+from fastapi import UploadFile
+from app.errors.exceptions import ConflictError, NotFoundError, FileError
 from app.models.user import User
 from app.services.user_service import UserService
 from tests.factories import UserFactory, UserRequestFactory
@@ -19,7 +16,10 @@ class TestUserServiceCreateUser:
         mock_user = User(id=1, name=data.name, email=data.email, password=data.password)
         mock_user_repository.save.return_value = mock_user
 
-        result = await UserService(mock_user_repository).create_user(data)
+        mock_img_repository = mocker.AsyncMock()
+        result = await UserService(
+            mock_user_repository, mock_img_repository
+        ).create_user(data)
 
         assert result is not None
         assert result.id == 1
@@ -35,7 +35,10 @@ class TestUserServiceCreateUser:
         mock_user_repository.exists_by_email.return_value = True
 
         with raises(ConflictError) as exc_info:
-            await UserService(mock_user_repository).create_user(data)
+            mock_img_repository = mocker.AsyncMock()
+            await UserService(mock_user_repository, mock_img_repository).create_user(
+                data
+            )
 
         assert exc_info.value.detail == 'Email already exists'
 
@@ -63,7 +66,10 @@ class TestUserServiceUpdateUser:
         mock_user_repository.exists_by_email.return_value = False
         mock_user_repository.save.return_value = mock_user
 
-        result = await UserService(mock_user_repository).update_user(id, data)
+        mock_img_repository = mocker.AsyncMock()
+        result = await UserService(
+            mock_user_repository, mock_img_repository
+        ).update_user(id, data)
 
         assert result.id == id
         assert result.email == data.email
@@ -87,7 +93,10 @@ class TestUserServiceUpdateUser:
         mock_user_repository.exists_by_email.return_value = True
 
         with raises(ConflictError) as exc_info:
-            await UserService(mock_user_repository).update_user(id, data)
+            mock_img_repository = mocker.AsyncMock()
+            await UserService(mock_user_repository, mock_img_repository).update_user(
+                id, data
+            )
 
         assert exc_info.value.detail == 'Email already exists'
 
@@ -103,7 +112,10 @@ class TestUserServiceUpdateUser:
         mock_user_repository.find_by_id.return_value = None
 
         with raises(NotFoundError) as exc_info:
-            await UserService(mock_user_repository).update_user(id, data)
+            mock_img_repository = mocker.AsyncMock()
+            await UserService(mock_user_repository, mock_img_repository).update_user(
+                id, data
+            )
 
         assert exc_info.value.detail == 'User not found'
 
@@ -126,7 +138,10 @@ class TestUserServiceUpdateUser:
         mock_user_repository.find_by_id.return_value = mock_user
         mock_user_repository.save.return_value = mock_user
 
-        result = await UserService(mock_user_repository).update_user(id, data)
+        mock_img_repository = mocker.AsyncMock()
+        result = await UserService(
+            mock_user_repository, mock_img_repository
+        ).update_user(id, data)
         assert result is not None
 
         mock_user_repository.exists_by_email.assert_not_called()
@@ -137,29 +152,36 @@ class TestUserServiceDeleteUser:
     async def test_delete_user_successfully(self, mocker):
         id = 1
 
+        user = UserFactory.build()
+
         mock_user_repository = mocker.AsyncMock()
-        mock_user_repository.exists_by_id.return_value = True
+        mock_user_repository.find_by_id.return_value = user
         mock_user_repository.delete.return_value = True
 
-        result = await UserService(mock_user_repository).delete_user(id)
+        mock_img_repository = mocker.AsyncMock()
+
+        result = await UserService(
+            mock_user_repository, mock_img_repository
+        ).delete_user(id)
 
         assert result
 
         mock_user_repository.delete.assert_called_once_with(id)
-        mock_user_repository.exists_by_id.assert_called_once_with(id)
+        mock_user_repository.find_by_id.assert_called_once_with(id)
 
     async def test_delete_user_fails_when_user_not_found(self, mocker):
         id = 99
 
         mock_user_repository = mocker.AsyncMock()
-        mock_user_repository.exists_by_id.return_value = False
+        mock_user_repository.find_by_id.return_value = None
 
         with raises(NotFoundError) as exc_info:
-            await UserService(mock_user_repository).delete_user(id)
+            mock_img_repository = mocker.AsyncMock()
+            await UserService(mock_user_repository, mock_img_repository).delete_user(id)
 
         assert exc_info.value.detail == 'User not found'
 
-        mock_user_repository.exists_by_id.assert_called_once_with(id)
+        mock_user_repository.find_by_id.assert_called_once_with(id)
         mock_user_repository.delete.assert_not_called()
 
 
@@ -174,9 +196,9 @@ class TestUserServiceGetAllUsers:
 
         mock_user_repository = mocker.AsyncMock()
         mock_user_repository.get_all.return_value = mock_items, total
-
+        mock_img_repository = mocker.AsyncMock()
         result_items, result_total, result_pages = await UserService(
-            mock_user_repository
+            mock_user_repository, mock_img_repository
         ).get_all_users(page, per_page)
 
         assert result_items is not None
@@ -194,9 +216,9 @@ class TestUserServiceGetAllUsers:
 
         mock_user_repository = mocker.AsyncMock()
         mock_user_repository.get_all.return_value = mock_items, total
-
+        mock_img_repository = mocker.AsyncMock()
         result_items, result_total, result_pages = await UserService(
-            mock_user_repository
+            mock_user_repository, mock_img_repository
         ).get_all_users(page, per_page)
 
         expected_total = 10
@@ -210,9 +232,9 @@ class TestUserServiceGetAllUsers:
 
         mock_user_repository = mocker.AsyncMock()
         mock_user_repository.get_all.return_value = [], 0
-
+        mock_img_repository = mocker.AsyncMock()
         result_items, result_total, result_pages = await UserService(
-            mock_user_repository
+            mock_user_repository, mock_img_repository
         ).get_all_users(page, per_page)
 
         assert len(result_items) == 0
@@ -220,3 +242,76 @@ class TestUserServiceGetAllUsers:
         assert result_pages == 0
 
         mock_user_repository.get_all.assert_called_once_with(page, per_page)
+
+
+@mark.asyncio
+class TestUserServiceSetProfilePicture:
+    async def test_set_profile_picture_successfully(self, mocker):
+        user_id = 1
+        user = UserFactory.build(id=user_id, profile_picture_path=None)
+
+        # Setup do Mock do UploadFile
+        mock_file = mocker.MagicMock(spec=UploadFile)
+        mock_file.content_type = 'image/png'
+        mock_file.size = 1024
+        mock_file.read = mocker.AsyncMock(return_value=b'\x89\x50\x4e\x47')
+        mock_file.seek = mocker.AsyncMock()
+
+        mock_user_repo = mocker.AsyncMock()
+        mock_user_repo.find_by_id.return_value = user
+
+        mock_img_repo = mocker.AsyncMock()
+        mock_img_repo.save.return_value = f'static/profile-picture/{user_id}.png'
+
+        service = UserService(mock_user_repo, mock_img_repo)
+        result = await service.set_profile_picture(user_id, mock_file)
+
+        assert result == f'static/profile-picture/{user_id}.png'
+
+        mock_img_repo.save.assert_called_once_with(
+            file=mock_file, filename=str(user_id), extension='.png'
+        )
+        mock_user_repo.save.assert_called_once_with(user)
+
+    async def test_set_profile_picture_deletes_old_photo_if_exists(self, mocker):
+        user_id = 1
+        old_path = 'static/profile-picture/old_avatar.png'
+        user = UserFactory.build(id=user_id, profile_picture_path=old_path)
+
+        mock_file = mocker.MagicMock(spec=UploadFile)
+        mock_file.content_type = 'image/png'
+        mock_file.size = 500
+        mock_file.read = mocker.AsyncMock(return_value=b'\x89\x50\x4e\x47')
+        mock_file.seek = mocker.AsyncMock()
+
+        mock_user_repo = mocker.AsyncMock()
+        mock_user_repo.find_by_id.return_value = user
+        mock_img_repo = mocker.AsyncMock()
+        mock_img_repo.save.return_value = 'static/profile-picture/new.png'
+
+        service = UserService(mock_user_repo, mock_img_repo)
+        await service.set_profile_picture(user_id, mock_file)
+
+        mock_img_repo.delete_file.assert_called_once_with(old_path)
+
+    async def test_set_profile_picture_fails_invalid_magic_number(self, mocker):
+        user_id = 1
+        user = UserFactory.build(id=user_id)
+
+        mock_file = mocker.MagicMock(spec=UploadFile)
+        mock_file.content_type = 'image/png'
+        mock_file.size = 100
+        mock_file.read = mocker.AsyncMock(
+            return_value=b'GIF89a'
+        )  # Header de GIF em arquivo PNG
+        mock_file.seek = mocker.AsyncMock()
+
+        mock_user_repo = mocker.AsyncMock()
+        mock_user_repo.find_by_id.return_value = user
+
+        service = UserService(mock_user_repo, mocker.AsyncMock())
+
+        with raises(FileError) as exc:
+            await service.set_profile_picture(user_id, mock_file)
+
+        assert 'match' in exc.value.detail.lower()
