@@ -17,7 +17,7 @@ class Contact(Base):
     phone: Mapped[Optional[str]] = mapped_column(String(20))
     email: Mapped[Optional[str]] = mapped_column(String(100))
     user_id: Mapped[int] = mapped_column(
-        ForeignKey('users.id'), nullable=False, index=True
+        ForeignKey('users.id', ondelete='CASCADE'), nullable=False, index=True
     )
     user: Mapped['User'] = relationship(back_populates='contacts')
 

@@ -761,7 +761,10 @@ files = [
 [package.dependencies]
 fastar = ">=0.8.0"
 httpx = ">=0.27.0"
-pydantic = {version = ">=2.12.0", extras = ["email"], markers = "python_version >= \"3.14\""}
+pydantic = [
+    {version = ">=2.8.0", extras = ["email"], markers = "python_version == \"3.13\""},
+    {version = ">=2.12.0", extras = ["email"], markers = "python_version >= \"3.14\""},
+]
 rich-toolkit = ">=0.19.7"
 rignore = ">=0.5.1"
 sentry-sdk = ">=2.20.0"
@@ -2999,5 +3002,5 @@ dev = ["pytest", "setuptools"]
 
 [metadata]
 lock-version = "2.1"
-python-versions = ">=3.14,<4.0"
-content-hash = "5f850fa28b296243275ae4ef4a7d8f8bdf894f50d1bc678b9b20e83b9bd54825"
+python-versions = ">=3.13,<4.0"
+content-hash = "2ef6c2fef512d10b207ba355f0fccb4ed28ca3a702cb8eaa32f7c7053de408d2"

@@ -92,6 +92,8 @@ async def setup_factory_session(async_session: AsyncSession):
 @pytest_asyncio.fixture
 async def client(async_session):
     app = create_app()
+    app.state.testing = True #Garante o uso do lifespan no ambiente de teste
+    app.state.limiter.enabled = False #Desativa o limiter das routes
 
     async def _get_test_db():
         yield async_session
@@ -102,7 +104,6 @@ async def client(async_session):
         transport=ASGITransport(app=app), base_url='http://test'
     ) as c:
         c.app = app
-        app.state.limiter.enabled = False
         yield c
         app.dependency_overrides.clear()
 

@@ -2,9 +2,9 @@ from fastapi import APIRouter, Depends, Query, UploadFile
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config.db import get_db
-from app.config.jwt import owner_required,verify_access_token
+from app.config.jwt import owner_required, verify_access_token
 from app.repositories.user_repository import UserRepository
-from app.schemas.schemas import UserRequest,UserResponse
+from app.schemas.schemas import UserRequest, UserResponse
 from app.services.user_service import UserService
 
 from app.repositories.img_repository import ImageRepository

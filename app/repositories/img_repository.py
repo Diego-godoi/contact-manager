@@ -27,6 +27,8 @@ class ImageRepository:
         )  # roda processo em outra thread sem bloquear o event loop
 
     async def delete_file(self, db_path: str | None) -> None:
+        if not db_path:
+            return
         full_path = await self._get_full_path(db_path)
         await run_in_threadpool(full_path.unlink, missing_ok=True)
 
